@@ -1,0 +1,57 @@
+---
+title: "Global Styles in styled-ppx: %styled.global"
+sidebarTitle: "Globals"
+description: "Inject site-wide CSS rules with %styled.global, understand when to use it, and learn which at-rules belong in plain CSS files to avoid FOUT."
+---
+
+Most styles in a styled-ppx project are scoped to a generated classname — they cannot accidentally affect elements outside the component they belong to. Global styles are the exception: they apply rules directly to the document without any classname scope. styled-ppx exposes `%styled.global` for exactly this purpose, powered by the [emotion](https://emotion.sh) runtime under the hood.
+
+## Injecting global rules
+
+Pass a CSS string to `%styled.global` (or its bracket form `[%styled.global]`) to inject styles that target HTML elements by tag name, attribute, or any other unscoped selector.
+
+<CodeGroup>
+```rescript ReScript
+%styled.global(`
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+`)
+```
+```reason Reason
+[%styled.global {|
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+|}];
+```
+</CodeGroup>
+
+## Recommended placement
+
+Call `%styled.global` at the **top level** of a module that is guaranteed to be loaded early — typically your application's root module or a dedicated `GlobalStyles` module that is imported before any component renders. Because emotion injects styles at runtime, the `%styled.global` expression must be evaluated before the DOM nodes it targets are painted.
+
+<Note>
+  `%styled.global` supports selectors and at-rules (such as `@media`) in the same way that `%cx` does. All properties and selectors are validated at compile time.
+</Note>
+
+## Avoid `@font-face` and `@import` inside globals
+
+<Warning>
+  Do **not** place `@font-face` definitions or `@import` statements inside `%styled.global`. Because emotion has a small runtime, these declarations are not processed until JavaScript runs — which delays font fetching and causes a [Flash of Unstyled Text (FOUT)](https://css-tricks.com/fout-foit-foft/). Add fonts directly to your HTML `<head>` or in a static `style.css` file instead.
+</Warning>
+
+In a static `.css` file the browser discovers `@font-face` and `@import` rules as soon as it parses the stylesheet, long before JavaScript initialises. Keeping those declarations outside of emotion ensures the fastest possible font loading.
+
+## Typical use cases
+
+Global styles are appropriate for:
+
+- CSS resets and normalisation (`margin: 0`, `box-sizing: border-box`, etc.)
+- Base typography rules applied to `html` or `body`
+- Utility classes that must be available everywhere
+- Third-party component overrides that cannot be targeted with a classname
+
+For anything that belongs to a specific component, prefer `%styled` or `%cx` so the styles remain scoped and tree-shakeable.

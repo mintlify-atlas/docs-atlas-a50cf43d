@@ -1,0 +1,89 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "styled-ppx",
+  "projectDescription": "A PPX (preprocessor extension) and runtime library that brings type-safe styled components and CSS-in-code to ReScript, Melange, and OCaml.",
+  "theme": "luma",
+  "primaryColor": "#9c9c9c",
+  "lightColor": "#222222",
+  "darkColor": "#e5e5e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "getting-started/rescript",
+              "getting-started/melange",
+              "getting-started/native"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "reference/styled-components",
+              "reference/classname",
+              "reference/dynamic-components",
+              "reference/interpolation",
+              "reference/syntax"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "reference/selectors",
+              "reference/media-queries",
+              "reference/keyframe",
+              "reference/globals",
+              "reference/react-ref",
+              "reference/array",
+              "reference/css"
+            ]
+          },
+          {
+            "group": "Runtime",
+            "pages": [
+              "reference/runtime"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "css-support",
+              "editor-support",
+              "faq",
+              "about"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Type-safe CSS via a built-in CSS parser and type-checker",
+    "Styled components for ReScript, Melange, and OCaml/native",
+    "PPX macro expansion — zero-cost abstraction over emotion.sh",
+    "Interpolation with type holes for type-safe CSS values",
+    "Dynamic components with prop-driven styles",
+    "className generation via %cx / [%cx] extension",
+    "Array API for composable, reusable CSS rules",
+    "Keyframe animations with %keyframe / [%keyframe]",
+    "Global styles injection via %styled.global / [%styled.global]",
+    "Server-side rendering support for OCaml/native via styled-ppx.native",
+    "VSCode and Vim editor extensions for CSS syntax highlighting"
+  ],
+  "publicApiSurface": [
+    "%styled.div / [%styled.div] — create a styled React component from an HTML element",
+    "%styled.global / [%styled.global] — inject global CSS styles",
+    "%cx / [%cx] — generate a className string from CSS declarations",
+    "%css / [%css] — generate a single Css.rule value",
+    "%keyframe / [%keyframe] — define CSS keyframe animations",
+    "CSS module — runtime values and property functions (CSS.px, CSS.hex, CSS.opacity, etc.)",
+    "CSS.unsafe — escape hatch for unsupported CSS properties",
+    "CSS.get_stylesheet() — get the full stylesheet as a string (native)",
+    "CSS.style_tag — React element rendering a <style> tag (native/SSR)",
+    "CSS.get_string_style_hashes() — get space-separated style hashes for hydration"
+  ]
+}

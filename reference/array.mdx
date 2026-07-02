@@ -1,0 +1,153 @@
+---
+title: "Array API in styled-ppx: Composable CSS Rules"
+sidebarTitle: "Array API"
+description: "Pass an array of Css.rule values to %styled or %cx for composable, dynamically computed styles with variable refs, conditionals, and pattern matching."
+---
+
+The string-based API is convenient for static styles, but real applications often need to compute styles dynamically — choosing a color from a theme, toggling a width based on a flag, or selecting a flex direction from a variant type. The Array API makes all of this straightforward by letting you pass an array of `Css.rule` values directly to `%styled` or `%cx` instead of a CSS string.
+
+## What is `Css.rule`?
+
+`Css.rule` is a type that represents a single [CSS declaration](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/CSS_basics#declaration). It can be a CSS property declaration, a selector block, or an at-rule such as `@media` or `@font-face`. You create `Css.rule` values using the [`%css` extension](/reference/css) or the `CSS` module, and then collect them into an array that is handed to `%styled` or `%cx`.
+
+## Basic example
+
+Both `%cx` and `%styled` accept an array of `Css.rule` values in place of a string:
+
+<CodeGroup>
+```rescript ReScript
+module Component = %styled.section([
+  %css("display: flex"),
+  %css("justify-content: center"),
+])
+
+let className = %cx([%css("display: flex;")])
+```
+```reason Reason
+module Component = [%styled.section [|
+  [%css "display: flex"],
+  [%css "justify-content: center"]
+|]];
+
+let className = [%cx [|[%css "display: flex;"]|]];
+```
+</CodeGroup>
+
+Any expression that evaluates to a `Css.rule` is valid as an array element — not just `%css` literals.
+
+## Composability features
+
+The Array API unlocks three key composability patterns that the string API cannot express:
+
+### Variable references
+
+Reference a `Css.rule` value stored in a variable to share a rule across multiple components:
+
+<CodeGroup>
+```rescript ReScript
+module Button = %styled.button([
+  buttonStyles,        /* a variable reference */
+  anyRandomFunction(123), /* a function call */
+  boolean ? %css("width: 100%;") : %css("width: auto"), /* conditional */
+])
+```
+```reason Reason
+module Button = [%styled.button
+  [|
+    buttonStyles (* a variable reference *),
+    anyRandomFunction(123) (* a function call *),
+    if (boolean) {
+      [%css "width: 100%;"];
+    } else {
+      [%css "width: auto"];
+    } (* conditional *),
+  |]
+];
+```
+</CodeGroup>
+
+### Pattern matching
+
+Use `switch` to pick a rule based on a variant value, keeping the mapping readable and exhaustive:
+
+<CodeGroup>
+```rescript ReScript
+module Align = %styled.div((~distribute=#Center, ~align=#Center) => [
+    %css("display: flex"),
+    %css("height: 100%"),
+    %css("width: 100%;"),
+    switch distribute {
+    | #Start => %css("justify-content: flex-start")
+    | #Center => %css("justify-content: center")
+    | #End => %css("justify-content: flex-end")
+    },
+    switch align {
+    | #Start => %css("align-items: flex-start")
+    | #Center => %css("align-items: center")
+    | #End => %css("align-items: flex-end")
+    },
+  ]
+)
+
+<Align distribute=#Start align=#Start />
+```
+```reason Reason
+module Align = [%styled.div (~distribute=`Center, ~align=`Center) => [|
+  [%css "display: flex"],
+  [%css "height: 100%"],
+  [%css "width: 100%;"],
+  switch (distribute) {
+  | `Start => [%css "justify-content: flex-start"]
+  | `Center => [%css "justify-content: center"]
+  | `End => [%css "justify-content: flex-end"]
+  },
+  switch (align) {
+  | `Start => [%css "align-items: flex-start"]
+  | `Center => [%css "align-items: center"]
+  | `End => [%css "align-items: flex-end"]
+  },
+|]];
+
+<Align distribute=`Start align=`Start />;
+```
+</CodeGroup>
+
+## Usage with dynamic components
+
+A dynamic component is a `%styled` component that accepts a function instead of a plain array or string. The function runs on every render, so you can call arbitrary code — such as a theme lookup — before building the rule list.
+
+<CodeGroup>
+```rescript ReScript
+module Button = %styled.button((~variant) => {
+  let color = Theme.button(~variant)
+
+  [
+    %css("background-color: $(color)"),
+    %css("width: 100%;"),
+    %css("display: inline-flex"),
+  ]
+})
+```
+```reason Reason
+module Button = [%styled.button (~variant) => {
+  let color = Theme.button(~variant);
+
+  [|
+    [%css "background-color: $(color)"],
+    [%css "width: 100%;"],
+    [%css "display: inline-flex"],
+  |];
+}];
+```
+</CodeGroup>
+
+<Note>
+  The **last expression** of the function body must be an array literal of `Css.rule` values. It cannot be a variable reference or a function call that returns an array. This is a PPX limitation: the transformation needs to inspect the AST directly to determine the return type.
+</Note>
+
+## Why use the Array API?
+
+- **Composability** — share and reuse individual rules across multiple components.
+- **Expressiveness** — use the full power of the language (conditionals, `switch`, function calls) to compute styles.
+- **Migration path** — if you are moving from `bs-css` or another rule-based system, you can wrap existing `Css.rule` values directly without rewriting everything as strings.
+- **Parser bypass** — if styled-ppx does not yet support a particular property, you can pass it through the `CSS` module without waiting for a parser update.

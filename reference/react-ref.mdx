@@ -1,0 +1,97 @@
+---
+title: "React Ref Forwarding in styled-ppx: innerRef Prop"
+sidebarTitle: "React Ref"
+description: "Access the underlying DOM node of any styled component through the innerRef prop, which forwards a React ref to the wrapped HTML element."
+---
+
+Every component created with `%styled` automatically exposes an `innerRef` prop. Passing a React ref to `innerRef` forwards it straight to the underlying DOM element, giving you direct access to the node — for imperative focus management, measurements, animations, or third-party library integrations.
+
+## How `innerRef` works
+
+When you pass a ref created by `React.useRef` to `innerRef`, styled-ppx forwards it to the root DOM element that the styled component renders. The ref's `.current` value will be populated with the DOM node once the component mounts, and will be set back to `null` when it unmounts — exactly as you would expect from React's standard ref forwarding.
+
+## Full working example
+
+The example below creates a styled `<input>` and programmatically focuses it when a button is clicked.
+
+<CodeGroup>
+```rescript ReScript
+module Input = %styled.input(`
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  outline: none;
+
+  &:focus {
+    border-color: #aaaaaa;
+  }
+`)
+
+@react.component
+let make = () => {
+  let input = React.useRef(Js.Nullable.null)
+
+  let focusInput = () =>
+    input.current
+    ->Js.Nullable.toOption
+    ->Belt.Option.forEach(input => focus(input))
+
+  let onClick = _ => focusInput()
+
+  <div>
+    <Input innerRef={ReactDOM.Ref.domRef(input)} />
+    <button onClick> {React.string("Click to focus")} </button>
+  </div>
+}
+```
+```reason Reason
+module Input = [%styled.input {|
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  outline: none;
+
+  &:focus {
+    border-color: #aaaaaa;
+  }
+|}];
+
+[@react.component]
+let make = () => {
+  let input = React.useRef(Js.Nullable.null);
+
+  let focusInput = () =>
+    input.current
+    |> Js.Nullable.toOption
+    |> Option.iter(Webapi.Dom.HtmlElement.focus);
+
+  let onClick = _ => focusInput();
+
+  <div>
+    <Input
+      innerRef={ReactDOM.Ref.domRef(input)}
+    />
+    <button onClick> {React.string("Click to focus")} </button>
+  </div>;
+};
+```
+</CodeGroup>
+
+<Note>
+  Use `ReactDOM.Ref.domRef(ref)` to convert a `React.ref` value into the shape expected by `innerRef`. This is the standard pattern for DOM refs in ReScript React — see the [ReScript React forwarding-refs docs](https://rescript-lang.org/docs/react/latest/forwarding-refs) for full details.
+</Note>
+
+## When to use `innerRef`
+
+`innerRef` is the right tool whenever you need imperative access to the DOM node — for example:
+
+- **Focus management** — programmatically focus or blur an input, button, or other focusable element.
+- **Scroll control** — call `scrollIntoView` or read `scrollTop` / `scrollLeft`.
+- **Measurements** — read `getBoundingClientRect()` for layout calculations.
+- **Third-party integrations** — pass the node to a library that expects a raw DOM element (animation libraries, chart libraries, etc.).
+
+<Tip>
+  If you only need to read a size or position once after mount, consider using `React.useEffect` together with `innerRef` to run the measurement after the first render.
+</Tip>

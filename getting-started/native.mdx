@@ -1,0 +1,298 @@
+---
+title: "Get Started with styled-ppx for OCaml Native"
+sidebarTitle: "Native"
+description: "Use styled-ppx server-side with OCaml and dune. Learn CSS.get_stylesheet, CSS.style_tag, and the server-reason-react hydration pattern for SSR."
+---
+
+styled-ppx supports fully server-side and native OCaml workloads through the `styled-ppx.native` library. Rather than injecting styles into a browser DOM, the native runtime maintains a global stylesheet registry: every `[%cx]` or `[%styled.*]` call hashes its CSS block, stores the rule, and returns a stable class name. You can then flush the accumulated styles as a raw string or as a React `<style>` element for server-side rendering with `server-reason-react`. This guide covers installation, dune configuration for both libraries and executables, the rendering API, and the hydration pattern for dynamic components.
+
+<Note>
+  This guide assumes you have [opam](https://github.com/ocaml/opam) and [dune](https://github.com/ocaml/dune) installed and are building a server or native process. OCaml 4.14 or later is required.
+</Note>
+
+<Steps>
+  <Step title="Install via opam">
+    Install `styled-ppx` from the opam package registry.
+
+    ```bash
+    opam install styled-ppx
+    ```
+
+    This installs two components relevant to native targets:
+
+    | Package | Purpose |
+    |---|---|
+    | `styled-ppx` | The PPX binary — transforms `[%styled.div ""]`, `[%cx ""]`, and `[%css ""]` at compile time |
+    | `styled-ppx.native` | The native runtime — stores CSS, hashes it, generates unique class names, and handles autoprefixing. Implements the emotion.sh algorithm on the server |
+  </Step>
+
+  <Step title="Configure dune">
+    Add `styled-ppx` to the `(pps ...)` preprocessor list and `styled-ppx.native` to `(libraries ...)`. The same pattern applies whether you are building a library or an executable.
+
+    **Library stanza:**
+
+    ```diff
+    (library
+      (name ...)
+      (libraries
+    +  styled-ppx.native
+       server-reason-react)
+      (preprocess
+       (pps
+    +   styled-ppx
+        server-reason-react-ppx)))
+    ```
+
+    **Executable stanza:**
+
+    ```diff
+    (executable
+      (libraries
+    +  styled-ppx.native
+       server-reason-react)
+      (preprocess
+       (pps
+    +   styled-ppx
+        server-reason-react-ppx)))
+    ```
+
+    <Note>
+      `server-reason-react` and `server-reason-react-ppx` are optional. They are only required when using `[%styled.div]` to render React components server-side. If you only use `[%cx]` to generate class names, you can omit them.
+    </Note>
+  </Step>
+
+  <Step title="Generate and collect styles">
+    Once the dune configuration is in place, you can use `[%cx]` in any `.re` or `.ml` file. After all `[%cx]` calls have been evaluated, call `CSS.get_stylesheet()` to flush the accumulated CSS as a string.
+
+    <CodeGroup>
+      ```reason Reason
+      let className = [%cx {|
+        display: flex;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center
+      |}];
+
+      let stylesheet: string = CSS.get_stylesheet();
+
+      print_endline(className);
+      /* .css-1xuw4bg */
+
+      print_endline(stylesheet);
+      /*
+        .css-1xuw4bg {
+          display: flex;
+          width: 100%;
+          height: 100%;
+          justify-content: center;
+          align-items: center;
+        } */
+      ```
+
+      ```rescript ReScript
+      let className = %cx(`
+        display: flex;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center
+      `)
+
+      let stylesheet: string = CSS.get_stylesheet()
+
+      Js.log(className)
+      /* .css-1xuw4bg */
+
+      Js.log(stylesheet)
+      /*
+        .css-1xuw4bg {
+          display: flex;
+          width: 100%;
+          height: 100%;
+          justify-content: center;
+          align-items: center;
+        } */
+      ```
+    </CodeGroup>
+
+    ## CSS API reference
+
+    | Function | Return type | Description |
+    |---|---|---|
+    | `CSS.get_stylesheet()` | `string` | Returns all accumulated CSS rules as a plain string |
+    | `CSS.style_tag` | React element | Renders a `<style>` tag containing all accumulated CSS, for use with `server-reason-react` |
+    | `CSS.get_string_style_hashes()` | `string` | Returns a space-separated list of all class name hashes — needed for client hydration |
+  </Step>
+
+  <Step title="Render styles with server-reason-react">
+    When building a server-rendered React application with `server-reason-react`, place `<CSS.style_tag />` inside your document `<head>`. It renders a `<style>` element containing every CSS rule that has been registered by the time the `<head>` is serialized.
+
+    <CodeGroup>
+      ```reason Reason
+      /* This is a server-reason-react module with those styles encoded as a unique className */
+      module Link = [%styled.a (~color=CSS.hex("4299E1")) => {|
+        font-size: 1.875rem;
+        line-height: 1.5;
+        text-decoration: none;
+        margin: 0px;
+        padding: 10px 0px;
+        color: $(color);
+      |}];
+
+      /* This is a unique className pointing to those styles */
+      let layout = [%cx {|
+        display: flex;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center
+      |}];
+
+      /* Later in a component */
+      let app =
+        <div className=layout>
+          <Link
+            color={CSS.hex("333333")}
+            href="https://sancho.dev"
+            rel="noopener noreferrer">
+            {React.string("sancho.dev")}
+          </Link>
+        </div>;
+      ```
+
+      ```rescript ReScript
+      module Link = %styled.a((~color=CSS.hex("4299E1")) => `
+        font-size: 1.875rem;
+        line-height: 1.5;
+        text-decoration: none;
+        margin: 0px;
+        padding: 10px 0px;
+        color: $(color);
+      `)
+
+      let layout = %cx(`
+        display: flex;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center
+      `)
+
+      let app =
+        <div className=layout>
+          <Link
+            color={CSS.hex("333333")}
+            href="https://sancho.dev"
+            rel="noopener noreferrer">
+            {React.string("sancho.dev")}
+          </Link>
+        </div>
+      ```
+    </CodeGroup>
+
+    Add `<CSS.style_tag />` inside a `Page` or `Document` component to inject all collected styles into the HTML response:
+
+    ```reason
+    module Page = {
+      [@react.component]
+      let make = () => {
+        <html>
+          <head>
+            <CSS.style_tag />
+          </head>
+        </html>
+      }
+    };
+    ```
+  </Step>
+</Steps>
+
+## Handling dynamic CSS and missing class names
+
+When components generate class names based on **runtime values** — such as dynamic styled components or `[%cx]` calls inside `switch` expressions — those class names only enter the global registry when the component actually renders.
+
+```reason
+module App = {
+  [@react.component]
+  let make = (~value) => {
+    let className = switch (value) {
+      | Some(value) => [%cx "margin: $(value)"]
+      | None => [%cx "margin: 0"]
+    };
+    <div className />;
+  }
+};
+```
+
+<Warning>
+  If `<CSS.style_tag />` is placed in `<head>` and `<App />` is placed in `<body>`, React serializes the head _before_ the body. This means dynamic class names registered during `App`'s render will **not** be present in the `<style>` tag, causing a flash of unstyled content or broken styles after client hydration.
+</Warning>
+
+### Recommended fix: pre-render the app to a string
+
+Render `<App />` to a string first, so all `[%cx]` calls are executed and their CSS is flushed into the global registry. Then embed the pre-rendered HTML and the now-complete stylesheet into the final `Document` response.
+
+```reason
+/* `App` is the entry component with client interactivity.
+   `Document` is a static server-only shell. */
+module Document = {
+  [@react.component]
+  let make = () => {
+    let app = ReactDOM.renderToString(<App />);
+
+    <html>
+      <head>
+        <CSS.style_tag />
+      </head>
+      <body>
+        <div id="root" dangerouslySetInnerHTML={"__html": app} />
+      </body>
+    </html>
+  }
+};
+
+/* Using Dream (https://github.com/aantron/dream) as the HTTP server */
+let some_server_side_handler = _request => {
+  Dream.html(ReactDOM.renderToString(<Document />));
+};
+```
+
+By the time `<Document />` renders its `<head>`, the `ReactDOM.renderToString(<App />)` call has already executed every `[%cx]` branch, so `<CSS.style_tag />` contains the full stylesheet.
+
+## Advanced: manual hydration with `get_stylesheet`
+
+If you prefer to manage the `<style>` tag yourself — for example, to inline styles with a custom HTTP response pipeline — use `CSS.get_stylesheet()` directly. Note that plain `get_stylesheet()` does **not** embed the hydration metadata that the Emotion client runtime needs to reuse server-rendered styles.
+
+To support client-side hydration you must construct the `<style>` tag manually with the correct `data-s` and `data-emotion` attributes:
+
+```reason
+React.createElement(
+  "style",
+  [
+    Bool("data-s", true),
+    String("data-emotion", "css " ++ CSS.get_string_style_hashes()),
+    DangerouslyInnerHtml(CSS.get_stylesheet())
+  ],
+  []
+)
+```
+
+<Tip>
+  If hydration is not a concern — for example, in a purely server-rendered page or a CLI tool that outputs HTML — `CSS.get_stylesheet()` alone is sufficient and simpler.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Components" icon="sliders" href="/reference/dynamic-components">
+    Pass runtime OCaml values as labeled arguments to styled components
+  </Card>
+  <Card title="cx — Class Name Utility" icon="tag" href="/reference/classname">
+    Generate class names from inline CSS with the [%cx] extension
+  </Card>
+  <Card title="Interpolation" icon="code" href="/reference/interpolation">
+    Embed OCaml expressions inside CSS string blocks
+  </Card>
+  <Card title="Editor Support" icon="pen-to-square" href="/editor-support">
+    Enable CSS syntax highlighting in VS Code and Vim
+  </Card>
+</CardGroup>

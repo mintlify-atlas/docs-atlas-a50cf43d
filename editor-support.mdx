@@ -1,0 +1,73 @@
+---
+title: "Editor Support for styled-ppx: VSCode and Vim"
+sidebarTitle: "Editor Support"
+description: "Set up syntax highlighting for styled-ppx CSS in your editor. Covers the VSCode extension and Vim plugin for ReScript, Reason, and OCaml."
+---
+
+One of the inherent trade-offs of embedding a language (CSS) inside another language (ReScript, Reason, or OCaml) is that editors do not automatically know how to highlight or understand the embedded syntax. To bridge that gap, styled-ppx ships dedicated editor extensions that bring full CSS syntax highlighting inside the `%cx`, `%styled`, and related notations — so your CSS looks like CSS, even when it lives inside an OCaml string position.
+
+## VSCode Extension
+
+The official VSCode extension adds CSS syntax highlighting for all styled-ppx notations and supports **ReScript**, **Reason**, and **OCaml** syntaxes.
+
+<CardGroup cols={1}>
+  <Card
+    title="vscode-styled-ppx on the Marketplace"
+    icon="puzzle-piece"
+    href="https://marketplace.visualstudio.com/items?itemName=davesnx.vscode-styled-ppx"
+  >
+    Install directly from the Visual Studio Code Marketplace. Search for **styled-ppx** in the Extensions panel, or follow the link above.
+  </Card>
+</CardGroup>
+
+You can also install it from the command line without opening the browser:
+
+```bash
+ext install davesnx.vscode-styled-ppx
+```
+
+<Tip>
+  The VSCode extension was written by [Max Lantas](https://github.com/mnxn). If you run into issues or have feature requests, open an issue on the [styled-ppx repository](https://github.com/davesnx/styled-ppx/issues/new).
+</Tip>
+
+## Vim Plugin
+
+The Vim plugin is hosted at [ahrefs/vim-styled-ppx](https://github.com/ahrefs/vim-styled-ppx) and provides the same CSS syntax highlighting for Vim users. It was written by [Egor Chemohonenko](https://github.com/ixzzd).
+
+Install it using whichever plugin manager you already use:
+
+### VimPlug
+
+Add the following line to your `~/.vimrc`, then run `:PlugInstall`:
+
+```vim
+Plug 'ahrefs/vim-styled-ppx'
+```
+
+### Vundle
+
+Add the following line to your `~/.vimrc`, then run `:PluginInstall`:
+
+```vim
+Plugin 'ahrefs/vim-styled-ppx'
+```
+
+### Pathogen
+
+Clone the repository directly into your Vim bundle directory:
+
+```bash
+git clone https://github.com/ahrefs/vim-styled-ppx ~/.vim/bundle/vim-styled-ppx
+```
+
+## Other Editors
+
+Support currently exists for VSCode and Vim. If you work in a different editor — Emacs, Neovim with a custom LSP config, Zed, or anything else — and would like to see a plugin, the best way to make that happen is to open a feature request.
+
+<Card
+  title="Request support for your editor"
+  icon="github"
+  href="https://github.com/davesnx/styled-ppx/issues/new"
+>
+  File a GitHub issue describing your editor and what kind of integration you are looking for. Community contributions are very welcome.
+</Card>

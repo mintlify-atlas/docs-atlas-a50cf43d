@@ -1,0 +1,241 @@
+---
+title: "className with %cx: Generating CSS Class Names Inline"
+sidebarTitle: "className"
+description: "Use %cx / [%cx] to generate a typed CSS className string from one or more declarations, with full selector and media query support."
+---
+
+Sometimes a full styled component is more ceremony than a situation calls for—you just need a class name to attach to an existing element. The `%cx` extension (ReScript) and `[%cx]` extension (Reason/OCaml) solve this by generating a `string` className directly from a CSS declaration block. The same compile-time type-checking that applies to `%styled` applies here: invalid properties and values are caught before your code runs.
+
+## Basic Usage
+
+Pass a CSS string to `%cx` and you get back a `string` value that you can attach to any React element via the `className` prop.
+
+<CodeGroup>
+```rescript ReScript
+<span className=%cx("font-size: 32px")> {React.string("Hello!")} </span>
+```
+
+```reason Reason
+<span className=[%cx "font-size: 32px"]>
+  {React.string("Hello!")}
+</span>;
+```
+</CodeGroup>
+
+For multi-line declarations, use a template string in ReScript or a quoted string in Reason:
+
+<CodeGroup>
+```rescript ReScript
+let fullWidth: string = %cx(`
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+`)
+
+<div className=fullWidth> {React.string("Hello!")} </div>
+```
+
+```reason Reason
+let fullWidth: string = [%cx {|
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+|}];
+
+<div className=fullWidth> {React.string("Hello!")} </div>;
+```
+</CodeGroup>
+
+The value `fullWidth` is a hashed class name string. Emotion injects the associated styles into a `<style>` tag in the document `<head>` the first time that class name is used.
+
+## Combining Class Names
+
+Because `%cx` returns a plain `string`, you can concatenate it with other class names using the standard string concatenation operator (`++`):
+
+<CodeGroup>
+```rescript ReScript
+<div className={fullWidth ++ " " ++ "extra-classname"}>
+  {React.string("Hello!")}
+</div>
+```
+
+```reason Reason
+<div className={fullWidth ++ " " ++ "extra-classname"}>
+  {React.string("Hello!")}
+</div>;
+```
+</CodeGroup>
+
+<Tip>
+  When combining many class names conditionally, consider building an array of strings and joining with `Js.Array.join` or a small helper—it keeps the JSX attribute readable.
+</Tip>
+
+## Selectors and Nesting
+
+`%cx` uses the same **declaration block** grammar as `%styled`. You can nest pseudo-classes, pseudo-elements, child selectors, and other selectors inside the block using `&`:
+
+<CodeGroup>
+```rescript ReScript
+let button: string = %cx(`
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: #516CF0;
+  color: #ffffff;
+
+  &:hover {
+    background: #3a55d4;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  & > svg {
+    margin-right: 4px;
+  }
+`)
+```
+
+```reason Reason
+let button: string = [%cx {|
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: #516CF0;
+  color: #ffffff;
+
+  &:hover {
+    background: #3a55d4;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  & > svg {
+    margin-right: 4px;
+  }
+|}];
+```
+</CodeGroup>
+
+## Media Queries
+
+Media queries are fully supported inside `%cx` blocks. Nest them just as you would in a stylesheet:
+
+<CodeGroup>
+```rescript ReScript
+let responsive: string = %cx(`
+  font-size: 14px;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+
+  @media (min-width: 1200px) {
+    font-size: 18px;
+  }
+`)
+```
+
+```reason Reason
+let responsive: string = [%cx {|
+  font-size: 14px;
+
+  @media (min-width: 768px) {
+    font-size: 16px;
+  }
+
+  @media (min-width: 1200px) {
+    font-size: 18px;
+  }
+|}];
+```
+</CodeGroup>
+
+## Interpolation
+
+Runtime variables can be interpolated inside `%cx` using the `$(ident)` syntax. The type of the variable is inferred from the position of the interpolation within the CSS property value:
+
+<CodeGroup>
+```rescript ReScript
+module Theme = {
+  let primary = CSS.hex("516CF0")
+  let small = CSS.px(8)
+}
+
+let themed: string = %cx(`
+  color: $(Theme.primary);
+  padding: $(Theme.small);
+`)
+```
+
+```reason Reason
+module Theme = {
+  let primary = CSS.hex("516CF0");
+  let small = CSS.px(8);
+};
+
+let themed: string = [%cx {|
+  color: $(Theme.primary);
+  padding: $(Theme.small);
+|}];
+```
+</CodeGroup>
+
+<Note>
+  Interpolation is type-checked at compile time. If `Theme.primary` is not a valid `CSS.Color.t` value, you will get a compile error. See the [Interpolation](/reference/interpolation) reference for the full rules.
+</Note>
+
+## What %cx Does Not Accept
+
+`%cx` uses declaration block mode, which means it does **not** accept an outer selector wrapper or bare top-level rules:
+
+<Warning>
+  Curly braces are not allowed at the top level of `%cx`. Writing `%cx("{ display: block; }")` will produce a parse error. Write declarations directly without wrapping braces.
+</Warning>
+
+```rescript
+// ✅ Valid
+let a = %cx("display: block;")
+
+// ❌ Invalid — no outer braces allowed
+let b = %cx("{ display: block; }")
+
+// ❌ Invalid — top-level selectors belong in %styled.global
+let c = %cx(".foo { display: block; }")
+```
+
+For global styles that need top-level selectors, use `%styled.global`. For a single `Css.rule` value (not a class name string), use `%css`.
+
+## Differences from `%styled`
+
+| Feature | `%cx` / `[%cx]` | `%styled.tag` / `[%styled.tag]` |
+|---------|-----------------|----------------------------------|
+| Returns | `string` (className) | React component module |
+| Needs a module name | No | Yes |
+| Accepts HTML props | No | Yes (all element props) |
+| Nested selectors | ✅ | ✅ |
+| Media queries | ✅ | ✅ |
+| Interpolation | ✅ | ✅ |
+| Dynamic (function form) | ❌ | ✅ |
+
+<CardGroup cols={2}>
+  <Card title="Styled Components" icon="paintbrush" href="/reference/styled-components">
+    Create full React components with %styled.tag
+  </Card>
+  <Card title="Interpolation" icon="brackets-curly" href="/reference/interpolation">
+    Type-safe variable interpolation inside CSS strings
+  </Card>
+  <Card title="CSS Syntax" icon="code" href="/reference/syntax">
+    Declaration block grammar, selectors, and at-rules
+  </Card>
+  <Card title="Dynamic Components" icon="sliders" href="/reference/dynamic-components">
+    Prop-driven styles with the function form of %styled
+  </Card>
+</CardGroup>

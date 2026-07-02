@@ -1,72 +1,81 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "styled-ppx",
+  "theme": "luma",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#9c9c9c",
+    "light": "#222222",
+    "dark": "#e5e5e5"
   },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "favicon": "https://media.brand.dev/17e75bab-9c33-4909-b87b-20dde2d32705.png",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "https://media.brand.dev/7c4ab6ef-1e2b-4c75-ae10-29b5216452b8.svg",
+    "dark": "https://media.brand.dev/7c4ab6ef-1e2b-4c75-ae10-29b5216452b8.svg"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
     "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "type": "github",
+      "href": "https://github.com/davesnx/styled-ppx"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/davesnx/styled-ppx"
     }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "getting-started/rescript",
+              "getting-started/melange",
+              "getting-started/native"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "reference/styled-components",
+              "reference/classname",
+              "reference/dynamic-components",
+              "reference/interpolation",
+              "reference/syntax"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "reference/selectors",
+              "reference/media-queries",
+              "reference/keyframe",
+              "reference/globals",
+              "reference/react-ref",
+              "reference/array",
+              "reference/css"
+            ]
+          },
+          {
+            "group": "Runtime",
+            "pages": [
+              "reference/runtime"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "css-support",
+              "editor-support",
+              "faq",
+              "about"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1,0 +1,141 @@
+---
+title: "Rule Extension %css: Single CSS Rule Generation"
+sidebarTitle: "Rule Extension"
+description: "Generate a type-safe Css.rule with %css for the Array API — one property per call, no selectors, no media queries, trailing semicolon optional."
+---
+
+The `%css` extension (or its bracket form `[%css]` in Reason/OCaml) compiles a single CSS property declaration into a `Css.rule` value. It is the building block of the [Array API](/reference/array) — you create individual rules with `%css` and then compose them into arrays that are passed to `%styled` or `%cx`.
+
+## Basic example
+
+<CodeGroup>
+```rescript ReScript
+let rule: Css.rule = %css("display: block")
+```
+```reason Reason
+let rule: Css.rule = [%css "display: block"];
+```
+</CodeGroup>
+
+The string is validated at compile time. If the property name or value is invalid, the build fails with a descriptive error — there is no runtime type checking required.
+
+## Limitations
+
+`%css` is intentionally constrained to a single declaration. Understanding what it **cannot** do is just as important as knowing what it can.
+
+### One property only
+
+A `%css` call accepts exactly one CSS property and its value. Passing multiple declarations separated by a semicolon is not allowed:
+
+<CodeGroup>
+```rescript ReScript
+// ✅ Valid — one declaration
+let rule = %css("color: blue")
+
+// ❌ Invalid — multiple declarations
+let rule = %css("color: blue; background-color: red")
+```
+```reason Reason
+(* ✅ Valid — one declaration *)
+let rule = [%css "color: blue"];
+
+(* ❌ Invalid — multiple declarations *)
+let rule = [%css "color: blue; background-color: red"];
+```
+</CodeGroup>
+
+### No selectors or media queries
+
+`%css` does not support selector blocks or at-rules. Use `%cx` or `%styled` when you need nesting, pseudo-classes, or `@media` queries:
+
+<CodeGroup>
+```rescript ReScript
+// ❌ Invalid — selector block not allowed in %css
+let rule = %css("&:hover { color: blue }")
+
+// ✅ Use %cx instead
+let hoverClass = %cx(`
+  &:hover {
+    color: blue;
+  }
+`)
+```
+```reason Reason
+(* ❌ Invalid — selector block not allowed in [%css] *)
+let rule = [%css "&:hover { color: blue }"];
+
+(* ✅ Use [%cx] instead *)
+let hoverClass = [%cx {|
+  &:hover {
+    color: blue;
+  }
+|}];
+```
+</CodeGroup>
+
+### No curly braces
+
+Wrapping the declaration in curly braces is not valid syntax for `%css`:
+
+<CodeGroup>
+```rescript ReScript
+// ❌ Invalid — braces not allowed
+let rule = %css("{ display: block }")
+
+// ✅ Valid
+let rule = %css("display: block")
+```
+```reason Reason
+(* ❌ Invalid — braces not allowed *)
+let rule = [%css "{ display: block }"];
+
+(* ✅ Valid *)
+let rule = [%css "display: block"];
+```
+</CodeGroup>
+
+### Semicolon is optional
+
+The trailing semicolon on the property value is optional. Both forms produce identical output:
+
+<CodeGroup>
+```rescript ReScript
+let a = %css("display: block;")  // with semicolon
+let b = %css("display: block")   // without semicolon — same result
+```
+```reason Reason
+let a = [%css "display: block;"]; (* with semicolon *)
+let b = [%css "display: block"];  (* without semicolon — same result *)
+```
+</CodeGroup>
+
+## Pairing with the Array API
+
+`%css` is most powerful when combined with the Array API. Build up a list of rules using `%css`, conditionals, and variable references, then pass the array directly to `%styled` or `%cx`:
+
+<CodeGroup>
+```rescript ReScript
+module Card = %styled.div([
+  %css("display: flex"),
+  %css("flex-direction: column"),
+  %css("padding: 16px"),
+  elevated ? %css("box-shadow: 0 2px 8px rgba(0,0,0,0.15)") : %css("box-shadow: none"),
+])
+```
+```reason Reason
+module Card = [%styled.div [|
+  [%css "display: flex"],
+  [%css "flex-direction: column"],
+  [%css "padding: 16px"],
+  if (elevated) {
+    [%css "box-shadow: 0 2px 8px rgba(0,0,0,0.15)"];
+  } else {
+    [%css "box-shadow: none"];
+  },
+|]];
+```
+</CodeGroup>
+
+<Tip>
+  Think of `%css` as a typed token for a single CSS declaration. The Array API assembles these tokens into a complete rule set, giving you the composability of a programmatic API with the compile-time safety of the string-based extensions.
+</Tip>

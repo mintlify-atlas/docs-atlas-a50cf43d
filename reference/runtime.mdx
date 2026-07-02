@@ -1,0 +1,426 @@
+---
+title: "CSS Runtime Module: Values, Properties, and Utilities"
+sidebarTitle: "CSS Module"
+description: "The CSS module is styled-ppx's runtime companion—providing every CSS value, property function, and escape hatch you need to build type-safe styles."
+---
+
+The `CSS` module is styled-ppx's runtime library, available since [v0.40](https://github.com/davesnx/styled-ppx/releases/tag/0.40.0). It exposes every CSS value (like `CSS.px(10)` or `CSS.block`) and every CSS property (like `CSS.opacity` or `CSS.display`) as typed OCaml functions. The PPX transformation uses this module under the hood when it expands `%cx`, `%css`, and `%styled.tag` calls—but you can also import and use it directly to create values you then interpolate into those extensions.
+
+## Package Names by Platform
+
+The `CSS` module ships under different package names depending on your target platform.
+
+<Tabs>
+  <Tab title="ReScript">
+    Add one of the following to your `bsconfig.json` under `"bs-dependencies"`:
+
+    ```json
+    "@davesnx/styled-ppx/rescript"
+    ```
+
+    Two sub-packages are available:
+    - `@davesnx/styled-ppx/css` — the CSS runtime without emotion
+    - `@davesnx/styled-ppx/emotion` — the CSS runtime bundled with the emotion bindings
+
+    The `@davesnx/styled-ppx/rescript` convenience dependency includes the correct sub-package automatically.
+  </Tab>
+  <Tab title="Melange">
+    Add `styled-ppx.melange` under `(libraries ...)` in your dune file:
+
+    ```diff
+    (library
+      (name ...)
+      (modes melange)
+      (libraries
+    +   styled-ppx.melange
+        reason-react)
+      (preprocess
+        (pps
+    +     styled-ppx
+          melange.ppx
+          reason-react-ppx)))
+    ```
+  </Tab>
+  <Tab title="OCaml Native">
+    Add `styled-ppx.native` under `(libraries ...)` in your dune file:
+
+    ```diff
+    (library
+      (name ...)
+      (libraries
+    +   styled-ppx.native
+        server-reason-react)
+      (preprocess
+        (pps
+    +     styled-ppx
+          server-reason-react-ppx)))
+    ```
+  </Tab>
+</Tabs>
+
+## Values
+
+Every CSS value is available as a typed OCaml function or constant in the `CSS` module. These are the building blocks you pass to CSS property functions or interpolate into extension strings.
+
+<CodeGroup>
+```rescript ReScript
+let ten = CSS.px(10)
+let position = CSS.block
+let faded = CSS.rgba(0, 0, 0, #num(0.5))
+```
+
+```reason Reason
+let ten = CSS.px(10);
+let position = CSS.block;
+let faded = CSS.rgba(0, 0, 0, `num(0.5));
+```
+</CodeGroup>
+
+### Values as Polymorphic Variants
+
+Every `CSS` module value is also available as a polymorphic variant. The two forms are fully interchangeable — they compile to the same type.
+
+<CodeGroup>
+```rescript ReScript
+let ten = #px(10)      // same as CSS.px(10)
+let pos = #block       // same as CSS.block
+let col = #flex        // same as CSS.flexBox
+```
+
+```reason Reason
+let ten = `px(10);     /* same as CSS.px(10) */
+let pos = `block;      /* same as CSS.block */
+let col = `flex;       /* same as CSS.flexBox */
+```
+</CodeGroup>
+
+<Note>
+  Use whichever form you prefer. The `CSS` module aliases exist for discoverability. Polymorphic variants are idiomatic OCaml/Reason and may be more concise in complex expressions.
+</Note>
+
+### Length Values
+
+The `length` type encompasses every CSS length unit:
+
+| Constructor | Description | Example |
+|---|---|---|
+| `CSS.px(n)` | Pixels (integer) | `CSS.px(16)` |
+| `CSS.pxFloat(n)` | Pixels (float) | `CSS.pxFloat(1.5)` |
+| `CSS.rem(n)` | Root em units | `CSS.rem(1.25)` |
+| `CSS.em(n)` | Em units | `CSS.em(2.0)` |
+| `CSS.vh(n)` | Viewport height | `CSS.vh(100.0)` |
+| `CSS.vw(n)` | Viewport width | `CSS.vw(50.0)` |
+| `CSS.pct(n)` | Percentage | `CSS.pct(100.0)` |
+| `CSS.cm(n)` | Centimetres | `CSS.cm(2.54)` |
+| `CSS.mm(n)` | Millimetres | `CSS.mm(10.0)` |
+| `CSS.pt(n)` | Points | `CSS.pt(12)` |
+| `CSS.zero` | Zero (unitless) | `CSS.zero` |
+
+### Color Values
+
+<CodeGroup>
+```rescript ReScript
+let red   = CSS.rgb(255, 0, 0)
+let semi  = CSS.rgba(0, 0, 0, #num(0.4))
+let brand = CSS.hex("4299E1")
+let hue   = CSS.hsl(#deg(200.0), #percent(80.0), #percent(60.0))
+let none  = CSS.transparent
+let curr  = CSS.currentColor
+```
+
+```reason Reason
+let red   = CSS.rgb(255, 0, 0);
+let semi  = CSS.rgba(0, 0, 0, `num(0.4));
+let brand = CSS.hex("4299E1");
+let hue   = CSS.hsl(`deg(200.0), `percent(80.0), `percent(60.0));
+let none  = CSS.transparent;
+let curr  = CSS.currentColor;
+```
+</CodeGroup>
+
+### CSS Variables
+
+The `CSS.var` function creates a `var()` reference:
+
+<CodeGroup>
+```rescript ReScript
+// Bare variable name (-- prefix is added automatically)
+let gap = CSS.var("spacing-md")
+// -> var(--spacing-md)
+
+// With fallback
+let color = CSS.var("brand-color", ~default="blue")
+// -> var(--brand-color, blue)
+```
+
+```reason Reason
+/* Bare variable name (-- prefix is added automatically) */
+let gap = CSS.var("spacing-md");
+/* -> var(--spacing-md) */
+
+/* With fallback */
+let color = CSS.var("brand-color", ~default="blue");
+/* -> var(--brand-color, blue) */
+```
+</CodeGroup>
+
+## Properties
+
+Every CSS property is available as a camelCased function on the `CSS` module. Each function takes the correct typed value(s) and returns a `Css.rule` — the building block used by the [Array API](/reference/array).
+
+<Tip>
+  When writing plain `%cx` or `%styled.tag` strings, the PPX generates these property calls for you automatically. You only need to call them directly when building rules with the Array API.
+</Tip>
+
+### Simple Properties
+
+Properties that accept a single value follow a straightforward pattern:
+
+<CodeGroup>
+```rescript ReScript
+let faded     = CSS.opacity(0.9)
+let invisible = CSS.visibility(#hidden)
+let pointer   = CSS.cursor(#pointer)
+let text      = CSS.color(CSS.hex("333333"))
+let round     = CSS.borderRadius(CSS.px(8))
+```
+
+```reason Reason
+let faded     = CSS.opacity(0.9);
+let invisible = CSS.visibility(`hidden);
+let pointer   = CSS.cursor(`pointer);
+let text      = CSS.color(CSS.hex("333333"));
+let round     = CSS.borderRadius(CSS.px(8));
+```
+</CodeGroup>
+
+### Display and Layout
+
+<CodeGroup>
+```rescript ReScript
+let row    = CSS.display(#flex)
+let grid   = CSS.display(#grid)
+let block  = CSS.display(#block)
+let center = CSS.justifyContent(#center)
+let align  = CSS.alignItems(#center)
+let wrap   = CSS.flexWrap(#wrap)
+```
+
+```reason Reason
+let row    = CSS.display(`flex);
+let grid   = CSS.display(`grid);
+let block  = CSS.display(`block);
+let center = CSS.justifyContent(`center);
+let align  = CSS.alignItems(`center);
+let wrap   = CSS.flexWrap(`wrap);
+```
+</CodeGroup>
+
+### Shorthand Properties
+
+Some properties accept multiple positional arguments:
+
+<CodeGroup>
+```rescript ReScript
+// flex(grow, shrink, basis)
+let basic = CSS.flex(1.0, 1.0, #px(100))
+
+// padding shorthand — single value applied to all sides
+let spacious = CSS.padding(CSS.px(16))
+
+// margin shorthand
+let centered = CSS.margin(CSS.auto)
+```
+
+```reason Reason
+/* flex(grow, shrink, basis) */
+let basic = CSS.flex(1.0, 1.0, `px(100));
+
+/* padding shorthand — single value applied to all sides */
+let spacious = CSS.padding(CSS.px(16));
+
+/* margin shorthand */
+let centered = CSS.margin(CSS.auto);
+```
+</CodeGroup>
+
+### Commonly Used Properties
+
+| Module function | CSS property | Accepts |
+|---|---|---|
+| `CSS.display` | `display` | `#flex`, `#grid`, `#block`, `#inline`, `#none`, … |
+| `CSS.opacity` | `opacity` | `float` |
+| `CSS.color` | `color` | `CSS.color` value |
+| `CSS.backgroundColor` | `background-color` | `CSS.color` value |
+| `CSS.margin` | `margin` | length |
+| `CSS.padding` | `padding` | length |
+| `CSS.width` | `width` | length or `#auto` |
+| `CSS.height` | `height` | length or `#auto` |
+| `CSS.fontSize` | `font-size` | length |
+| `CSS.fontWeight` | `font-weight` | `CSS.fontWeight` value |
+| `CSS.borderRadius` | `border-radius` | length |
+| `CSS.flex` | `flex` | grow, shrink, basis |
+| `CSS.flexDirection` | `flex-direction` | `#row`, `#column`, … |
+| `CSS.justifyContent` | `justify-content` | `#center`, `#flexStart`, `#spaceBetween`, … |
+| `CSS.alignItems` | `align-items` | `#center`, `#flexStart`, `#stretch`, … |
+| `CSS.position` | `position` | `#relative`, `#absolute`, `#fixed`, `#sticky` |
+| `CSS.cursor` | `cursor` | `#pointer`, `#default`, `#notAllowed`, … |
+| `CSS.visibility` | `visibility` | `#visible`, `#hidden`, `#collapse` |
+| `CSS.overflow` | `overflow` | `#hidden`, `#scroll`, `#auto`, `#visible` |
+| `CSS.transform` | `transform` | transform list |
+| `CSS.transition` | `transition` | transition shorthand |
+| `CSS.animation` | `animation` | animation shorthand |
+
+## `CSS.unsafe`
+
+`CSS.unsafe` is the escape hatch for properties that styled-ppx does not yet support. It takes a raw property name (as written in CSS, not camelCase) and a raw string value, and returns a `Css.rule`.
+
+**Signature:**
+
+```ocaml
+val unsafe : string -> string -> Css.rule
+```
+
+**When to use it:** When a property isn't in styled-ppx's built-in list yet. The safety guarantee disappears — if you write an invalid property or value, there will be no compile-time error.
+
+<CodeGroup>
+```rescript ReScript
+let prefixed = CSS.unsafe("-webkit-tap-highlight-color", "transparent")
+
+// Combine with the Array API
+let card = %cx([
+  %css("border-radius: 8px"),
+  CSS.unsafe("-webkit-overflow-scrolling", "touch"),
+])
+```
+
+```reason Reason
+let prefixed = CSS.unsafe("-webkit-tap-highlight-color", "transparent");
+
+/* Combine with the Array API */
+let card = [%cx [|
+  [%css "border-radius: 8px"],
+  CSS.unsafe("-webkit-overflow-scrolling", "touch"),
+|]];
+```
+</CodeGroup>
+
+<Note>
+  If a property you need is missing, please [open an issue](https://github.com/davesnx/styled-ppx/issues/new) — most properties are straightforward to add. `CSS.unsafe` is a temporary workaround, not a design goal.
+</Note>
+
+## SSR / Native APIs
+
+When targeting OCaml native (using `styled-ppx.native`), the `CSS` module exposes additional server-side rendering utilities. These are **not** available in the ReScript or Melange targets.
+
+### `CSS.get_stylesheet()`
+
+Returns a `string` containing all CSS rules that have been generated so far. Use this when you want to inline the stylesheet as a raw string — for example, when writing it to a file or injecting it into a custom `<style>` tag.
+
+```ocaml
+val get_stylesheet : unit -> string
+```
+
+```reason
+let className = [%cx {|
+  display: flex;
+  align-items: center;
+|}];
+
+let stylesheet: string = CSS.get_stylesheet();
+/* ".css-1xuw4bg { display: flex; align-items: center; }" */
+```
+
+### `CSS.style_tag`
+
+A server-reason-react component that renders a `<style>` element containing all generated CSS. Place it inside your document `<head>` to ship styles as part of server-rendered HTML.
+
+```reason
+module Page = {
+  [@react.component]
+  let make = () => {
+    <html>
+      <head>
+        <CSS.style_tag />
+      </head>
+      <body>
+        /* ... */
+      </body>
+    </html>
+  };
+};
+```
+
+<Note>
+  Because `CSS.style_tag` collects styles that have already been executed, you must render your application components *before* rendering the document shell that contains `<CSS.style_tag />`. A safe pattern is to call `ReactDOM.renderToString(<App />)` first, then render the outer `<Document />` that references `<CSS.style_tag />`.
+</Note>
+
+### `CSS.get_string_style_hashes()`
+
+Returns a space-separated string of all generated class-name hashes. This is used when building the `data-emotion` attribute required for client-side hydration.
+
+```ocaml
+val get_string_style_hashes : unit -> string
+```
+
+To support React hydration, construct the `<style>` tag manually with the correct emotion attributes:
+
+```reason
+React.createElement("style",
+  [
+    Bool("data-s", true),
+    String("data-emotion", "css " ++ CSS.get_string_style_hashes()),
+    DangerouslyInnerHtml(CSS.get_stylesheet())
+  ], []
+)
+```
+
+### SSR API Summary
+
+| Function | Return type | Use case |
+|---|---|---|
+| `CSS.get_stylesheet()` | `string` | Inline all CSS as a raw string |
+| `CSS.style_tag` | React element | Drop-in `<style>` tag for server-rendered HTML |
+| `CSS.get_string_style_hashes()` | `string` | Build the `data-emotion` attribute for hydration |
+
+## Usage with Interpolation
+
+Values created with the `CSS` module are designed to be interpolated inside `%cx`, `%css`, and `%styled.tag` strings using the `$(variable)` syntax. The PPX uses the interpolation position to infer the expected type, so passing a value of the wrong CSS type produces a compile error.
+
+<CodeGroup>
+```rescript ReScript
+let small = CSS.px(10)
+// CSS.length — valid wherever a length is expected
+
+let classname = %cx(`margin: $(small)`)
+// -> margin: 10px;
+
+module Theme = {
+  let black = CSS.hex("111111")
+}
+
+module Link = %styled.a(`
+  color: $(Theme.black);
+  font-size: $(small);
+`)
+```
+
+```reason Reason
+let small = CSS.px(10);
+/* CSS.length — valid wherever a length is expected */
+
+let classname = [%cx {|margin: $(small)|}];
+/* -> margin: 10px; */
+
+module Theme = {
+  let black = CSS.hex("111111");
+};
+
+module Link = [%styled.a {|
+  color: $(Theme.black);
+  font-size: $(small);
+|}];
+```
+</CodeGroup>
+
+See the [Interpolation](/reference/interpolation) reference page for a full explanation of rules, supported positions, and type-safety guarantees.

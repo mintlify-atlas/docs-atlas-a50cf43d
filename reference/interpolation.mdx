@@ -1,0 +1,287 @@
+---
+title: "Interpolation: Type-Safe CSS Variables in styled-ppx"
+sidebarTitle: "Interpolation"
+description: "Use $(ident) to embed typed runtime values inside CSS strings. styled-ppx infers the required CSS type from the property position automatically."
+---
+
+Interpolation lets you embed runtime values from your OCaml/ReScript code directly inside CSS strings. Rather than hard-coding colours, sizes, or breakpoints, you define them once in your code and reference them by name inside the CSS. styled-ppx validates every interpolation at compile time by inferring the expected CSS type from the position of `$(ident)` within the property value—so a mismatched type is a compile error, not a silent visual bug.
+
+<Note>
+  In ReScript, `$(ident)` inside a styled-ppx string is **not** the same as ReScript's built-in string interpolation (`` `Hello ${name}` ``). styled-ppx's interpolation is handled by the PPX at compile time and is specific to CSS extension nodes.
+</Note>
+
+## Basic Syntax
+
+Wrap any identifier or module accessor in `$(...)` to interpolate it:
+
+<CodeGroup>
+```rescript ReScript
+let maxWidth = CSS.px(100)
+
+module Theme = {
+  let black = CSS.black
+}
+
+module Component = %styled.div(`
+  border: 1px solid $(Theme.black);
+  max-width: $(maxWidth);
+`)
+```
+
+```reason Reason
+let maxWidth = CSS.px(100);
+
+module Theme = {
+  let black = CSS.black;
+};
+
+module Component = [%styled.div
+  {|
+  border: 1px solid $(Theme.black);
+  max-width: $(maxWidth);
+|}
+];
+```
+</CodeGroup>
+
+`CSS.black` is a `CSS.Color.t` value; `CSS.px(100)` is a `CSS.Length.t` value. The PPX checks that `$(Theme.black)` appears in a colour position (`border` colour slot) and that `$(maxWidth)` appears in a length position (`max-width`), and enforces those types.
+
+## Where Interpolation Is Supported
+
+Interpolation works in three places inside a CSS declaration block:
+
+<CodeGroup>
+```rescript ReScript
+module Component = %styled.div(`
+  border: 1px solid $(Theme.black); // ✅ property value
+  @media $(Theme.small) { ... }     // ✅ at-rule prelude
+  &:$(Theme.small) { ... }          // ✅ selector
+`)
+```
+
+```reason Reason
+module Component = [%styled.div {|
+  border: 1px solid $(Theme.black); (* ✅ property value *)
+  @media $(Theme.small) { ... }     (* ✅ at-rule prelude *)
+  &:$(Theme.small) { ... }          (* ✅ selector *)
+|}];
+```
+</CodeGroup>
+
+In **property values**, the type is inferred from the CSS property. In **selectors** and **at-rule preludes**, interpolation behaves as string splicing—no property type is enforced.
+
+## Type Safety via Type Holes
+
+The mechanism behind typed interpolation is called **type holes**. When the PPX sees `$(ident)` at a given position in the CSS, it generates a type annotation for that position based on the CSS property's grammar and lets the OCaml type checker validate that the runtime value matches.
+
+Consider `margin`:
+
+<CodeGroup>
+```rescript ReScript
+module Size = {
+  let small = CSS.px(10)
+}
+
+%cx("margin: $(Size.small)")           // -> margin: 10px;
+%cx("margin: $(Size.small) 0")         // -> margin: 10px 0;
+%cx("margin: $(Size.small) $(Size.small)") // -> margin: 10px 10px;
+```
+
+```reason Reason
+module Size = {
+  let small = CSS.px(10);
+};
+
+[%cx "margin: $(Size.small)"];              (* -> margin: 10px; *)
+[%cx "margin: $(Size.small) 0"];            (* -> margin: 10px 0; *)
+[%cx "margin: $(Size.small) $(Size.small)"]; (* -> margin: 10px 10px; *)
+```
+</CodeGroup>
+
+`Size.small` is `CSS.px(10)`, which has type `` `px(int) `` — a member of the `length` type. The `margin` property expects `length` values, so the type check passes.
+
+## The `length` Type
+
+Any property that accepts a length value (such as `margin`, `padding`, `width`, `height`, `gap`, etc.) requires a value of the following type:
+
+<CodeGroup>
+```rescript ReScript
+type length = [
+  | #ch(float)
+  | #em(float)
+  | #ex(float)
+  | #rem(float)
+  | #vh(float)
+  | #vw(float)
+  | #vmin(float)
+  | #vmax(float)
+  | #px(int)
+  | #pxFloat(float)
+  | #cm(float)
+  | #mm(float)
+  | #inch(float)
+  | #pc(float)
+  | #pt(int)
+  | #zero
+  | #percent(float)
+]
+```
+
+```reason Reason
+type length = [
+  | `ch(float)
+  | `em(float)
+  | `ex(float)
+  | `rem(float)
+  | `vh(float)
+  | `vw(float)
+  | `vmin(float)
+  | `vmax(float)
+  | `px(int)
+  | `pxFloat(float)
+  | `cm(float)
+  | `mm(float)
+  | `inch(float)
+  | `pc(float)
+  | `pt(int)
+  | `zero
+  | `percent(float)
+];
+```
+</CodeGroup>
+
+Use the corresponding constructors from the `CSS` module: `CSS.px(10)`, `CSS.em(1.5)`, `CSS.rem(2.0)`, `CSS.percent(100.0)`, `CSS.zero`, and so on.
+
+## What Cannot Be Interpolated
+
+Interpolation is intentionally limited to what the PPX can read statically from the AST. **Entire property names** cannot be interpolated—this is different from JavaScript-based solutions such as styled-components or Sass/Less where the interpolation is purely textual.
+
+```rescript
+// ❌ Not valid in styled-ppx — cannot interpolate a property name
+// `margin-${whatever}: 10px`
+```
+
+This restriction exists to preserve type safety. If property names could be arbitrary strings, the type checker would have no way to validate the associated values.
+
+**The workaround** is to enumerate the variants explicitly with a switch:
+
+<CodeGroup>
+```rescript ReScript
+let margin = direction =>
+  switch direction {
+  | Left   => %css("margin-left: 10px;")
+  | Right  => %css("margin-right: 10px;")
+  | Top    => %css("margin-top: 10px;")
+  | Bottom => %css("margin-bottom: 10px;")
+  }
+```
+
+```reason Reason
+let margin = direction =>
+  switch (direction) {
+  | Left   => [%css "margin-left: 10px;"]
+  | Right  => [%css "margin-right: 10px;"]
+  | Top    => [%css "margin-top: 10px;"]
+  | Bottom => [%css "margin-bottom: 10px;"]
+  };
+```
+</CodeGroup>
+
+Each branch uses `%css` / `[%css]` to produce a typed `Css.rule`, which can then be composed via the Array API.
+
+## The Polymorphism Problem with Shorthand Properties
+
+Some CSS shorthand properties—`background`, `animation`, `box-shadow`, `transition`, `transform`—have values where the type depends on position **and** each position is optional. This makes it impossible for the type checker to infer the correct type for multiple simultaneous interpolations.
+
+For example:
+
+```css
+background: #fff;               /* color only */
+background: url(img.png);       /* image only */
+background: #fff url(img.png);  /* color + image */
+```
+
+If you write `background: $(var1) $(var2)`, the PPX cannot know whether `var1` is a color or an image—both are valid in that position. OCaml/ReScript's type system does not support overloads.
+
+For these properties, use a single interpolated value when possible, or fall back to the Array API with explicit `CSS.background(...)` calls.
+
+## Variable References and Functions Are Not Supported
+
+Because styled-ppx transforms the AST before compilation, the CSS string must be a literal at transform time. You cannot pass a variable that holds a CSS string, or a function reference:
+
+<CodeGroup>
+```rescript ReScript
+// 🔴 Can't pass a function reference
+let fn = (~kind, ~big) => { /* ... */ }
+module X = %styled.div(fn)
+
+// 🔴 Can't pass a variable reference
+let value = "display: block"
+module X = %styled.div(value)
+```
+
+```reason Reason
+(* 🔴 Can't pass a function reference *)
+let fn = (~kind, ~big) => /* ... */
+module X = [%styled.div fn];
+
+(* 🔴 Can't pass a variable reference *)
+let value = "display: block";
+module X = [%styled.div value];
+```
+</CodeGroup>
+
+For this level of dynamism, use [Dynamic Components](/reference/dynamic-components) (inline function form) or the [Array API](/reference/array).
+
+## Unsupported Properties Workaround
+
+If you encounter a CSS property that styled-ppx does not yet support, the recommended path is to [open an issue](https://github.com/davesnx/styled-ppx/issues/new) on the repository. Most properties are straightforward to add.
+
+In the meantime, you can use `CSS.unsafe` together with the Array API to bypass the type checker for that one property:
+
+<CodeGroup>
+```rescript ReScript
+let block: Css.rule = %css("display: block")
+let randomProperty = CSS.unsafe("-webkit-invented-property", "10px")
+let picture = %cx([block, randomProperty])
+```
+
+```reason Reason
+let block: Css.rule = [%css "display: block"];
+let randomProperty = CSS.unsafe("-webkit-invented-property", "10px");
+let picture = [%cx [|block, randomProperty|]];
+```
+</CodeGroup>
+
+For styled components:
+
+<CodeGroup>
+```rescript ReScript
+let randomProperty = CSS.unsafe("-webkit-invented-property", "10px")
+let picture = %styled.div([randomProperty])
+```
+
+```reason Reason
+let randomProperty = CSS.unsafe("-webkit-invented-property", "10px");
+let picture = [%styled.div [|randomProperty|]];
+```
+</CodeGroup>
+
+<Warning>
+  `CSS.unsafe` escapes the type system entirely. The correctness of the output depends on your own usage—there is no compile-time validation. Use it only as a last resort while waiting for proper support to be added.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Components" icon="sliders" href="/reference/dynamic-components">
+    Use interpolation to drive styles from React props
+  </Card>
+  <Card title="Runtime CSS" icon="box" href="/reference/runtime">
+    The CSS module with all typed value constructors
+  </Card>
+  <Card title="Array API" icon="list" href="/reference/array">
+    Compose Css.rule values with full runtime control
+  </Card>
+  <Card title="CSS Syntax" icon="code" href="/reference/syntax">
+    Where interpolation fits in the full CSS grammar
+  </Card>
+</CardGroup>

@@ -1,0 +1,93 @@
+---
+title: "Media Queries in styled-ppx: Responsive Styles"
+sidebarTitle: "Media Queries"
+description: "Add @media rules and other CSS at-rules inside %cx and %styled blocks, with support for string interpolation and reusable breakpoint modules."
+---
+
+Responsive design often requires different styles at different viewport sizes. styled-ppx lets you write `@media` rules — and any other CSS [at-rule](https://developer.mozilla.org/en-US/docs/Web/CSS/At-rule) — directly inside a `%cx` or `%styled` block alongside your regular declarations. The breakpoints are validated at compile time just like every other property.
+
+## Basic `@media` usage
+
+Drop an `@media` block anywhere inside your `%cx` or `%styled.tag` string. The rules inside it are scoped to the same generated classname, so no global side-effects occur.
+
+<CodeGroup>
+```rescript ReScript
+let container = %cx(`
+  display: grid;
+  grid-column-gap: 48px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+
+  @media screen and (max-width: 767px) {
+    grid-template-columns: 100%;
+  }
+`)
+```
+```reason Reason
+let container = [%cx {|
+  display: grid;
+  grid-column-gap: 48px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+
+  @media screen and (max-width: 767px) {
+    grid-template-columns: 100%;
+  }
+|}];
+```
+</CodeGroup>
+
+<Note>
+  Media queries (and all at-rules) are supported in `%cx` and `%styled`. They are **not** available in `%css` because that extension generates only a single `Css.rule`.
+</Note>
+
+## Interpolation in media queries
+
+Hard-coded breakpoint values scattered across a codebase become difficult to maintain. styled-ppx supports `$(expr)` interpolation inside `@media` queries, so you can centralise your breakpoints in a module and reference them by name.
+
+<CodeGroup>
+```rescript ReScript
+module Media = {
+  let mobileDown = "(max-width: 767px)"
+}
+
+let container = %cx(`
+  display: grid;
+  grid-column-gap: 48px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+
+  @media screen and $(Media.mobileDown) {
+    grid-template-columns: 100%;
+  }
+`)
+```
+```reason Reason
+module Media = {
+  let mobileDown = "(max-width: 767px)";
+};
+
+let container = [%cx {|
+  display: grid;
+  grid-column-gap: 48px;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+
+  @media screen and $(Media.mobileDown) {
+    grid-template-columns: 100%;
+  }
+|}];
+```
+</CodeGroup>
+
+<Tip>
+  Collect all your breakpoint strings in a dedicated `Media` or `Breakpoints` module. Referencing them via interpolation means a single edit updates every media query that uses that value across your entire application.
+</Tip>
+
+## Other at-rules
+
+The same syntax works for other CSS at-rules that can appear inside a rule block, such as `@supports` and `@layer`. Any at-rule that is syntactically valid in CSS and appears inside the extension string will be processed and emitted correctly.
+
+<Warning>
+  `@font-face` and `@import` are best placed in a plain `.css` file or directly in your HTML rather than inside `%styled.global`. Keeping them inside emotion's runtime delays font fetching and can cause a [Flash of Unstyled Text (FOUT)](https://css-tricks.com/fout-foit-foft/). See the [Globals reference](/reference/globals) for details.
+</Warning>

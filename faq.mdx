@@ -1,0 +1,79 @@
+---
+title: "Frequently Asked Questions about styled-ppx"
+sidebarTitle: "FAQ"
+description: "Common questions about styled-ppx: language support, interpolation limits, PPX mechanics, comparisons with bs-css, and how class name hashing works."
+---
+
+styled-ppx is a fairly unusual piece of technology — it sits at the intersection of a CSS compiler, a type-checker, and a code-generation tool that runs at build time. The questions below cover the things people ask most often, from basic language support to deeper internals.
+
+<AccordionGroup>
+
+<Accordion title="Does it support ReScript, Reason, and OCaml?">
+  Yes — all three syntaxes are supported. Because the PPX transformation operates on the Abstract Syntax Tree (AST) and all three languages share the majority of that AST, a single transformation pass can handle them all.
+
+  ReScript has introduced some challenges over time because the ReScript team has been exploring new language patterns and gradually diverging from the upstream OCaml AST. styled-ppx tracks those changes as closely as possible, but if you encounter a compatibility issue on a very new ReScript version, please [open an issue](https://github.com/davesnx/styled-ppx/issues/new).
+
+  The [VSCode extension](https://marketplace.visualstudio.com/items?itemName=davesnx.vscode-styled-ppx) and the [Vim plugin](https://github.com/ahrefs/vim-styled-ppx) both handle syntax highlighting for all three languages as well.
+</Accordion>
+
+<Accordion title="What is a PPX?">
+  A PPX (PreProcessor eXtension) is an OCaml compiler plugin that transforms the program's Abstract Syntax Tree before it reaches the type-checker. You can think of it as a macro system that operates on structured syntax rather than raw text.
+
+  In the context of styled-ppx, the PPX intercepts expressions like `[%cx "color: red"]` at compile time, parses the CSS string, type-checks every property and value against a model of the CSS specification, and replaces the expression with fully-typed OCaml/ReScript bindings. By the time your code reaches the runtime, the CSS string is gone — it has been replaced by function calls.
+
+  This is what makes styled-ppx different from a runtime CSS-in-JS library: errors are caught at compile time, not in the browser.
+</Accordion>
+
+<Accordion title="Why not just use bs-css?">
+  [bs-css](https://github.com/giraud/bs-css) and [bs-emotion](https://github.com/ahrefs/bs-emotion) were the primary way to write type-safe styles in ReasonML/ReScript before styled-ppx existed, and they work well for many use cases. However, there are a few reasons styled-ppx takes a different approach:
+
+  **1. You have to learn a new DSL.**
+  bs-css models every CSS property as a typed function call. For simple properties this is fine, but for anything complex it becomes unwieldy. The classic example is `width: calc(100% - 20px)`, which in bs-css becomes `CSS.width(calc(min, percent(100.), px(20)))`. Real-world stylesheets frequently need `CSS.unsafe` to escape the DSL.
+
+  **2. The runtime bundle is large.**
+  The bs-css runtime starts at roughly 64 KB and grows with usage. styled-ppx generates bindings directly, so there is no DSL-translation runtime at all.
+
+  **3. The trade-off is worse.**
+  Having a significant runtime whose only purpose is converting a DSL back into CSS strings is a poor deal when the same type-safety can be achieved at compile time with zero runtime overhead.
+
+  If you already use bs-css and it suits your needs, that is perfectly valid. styled-ppx is an alternative design, not a judgment on bs-css.
+</Accordion>
+
+<Accordion title="What are the limitations of interpolation?">
+  Interpolation lets you splice typed ReScript/OCaml values into CSS expressions:
+
+  ```rescript
+  let primaryColor = "dodgerblue"
+  let styles = [%cx {|color: $(primaryColor); padding: 1rem|}]
+  ```
+
+  The key limitation is that **interpolated values must match the expected type for the CSS property they appear in**. styled-ppx knows, for example, that `color` expects a color value, so interpolating a plain integer will produce a compile-time error.
+
+  There is currently no support for **dynamic property names** — you cannot interpolate the name of a CSS property itself, only its value. This is by design (see the next question).
+
+  Additionally, **shorthand properties** that accept multiple value types can sometimes be harder to interpolate into, because the type of the hole must be unambiguous. In those cases, using the longhand properties is recommended.
+</Accordion>
+
+<Accordion title="Why doesn't styled-ppx support dynamic property names?">
+  CSS property names are not arbitrary strings — each one has a specific grammar for its allowed values, and the type-checker needs to know at compile time which property it is looking at in order to validate the value. If the property name were itself dynamic (computed at runtime), the PPX would have no way to know which type to check the value against.
+
+  Supporting dynamic property names would mean either abandoning type-safety for those declarations or deferring checking to runtime — both of which defeat the core purpose of the library. If you need truly dynamic styles, using an escape hatch like `ReactDOM.Style.make` directly is the right tool.
+</Accordion>
+
+<Accordion title="How does class name hashing work?">
+  styled-ppx delegates class name generation to the [emotion](https://emotion.sh) runtime. Emotion hashes the serialised CSS content to produce a short, stable, unique class name (for example `css-1x2y3z`). The same CSS always produces the same class name, which means identical styles across different components are automatically deduplicated in the stylesheet.
+
+  Because the hashing happens at the value level rather than the component level, you do not need to worry about naming collisions — two components that happen to share the same styles will share a class name, which is a feature rather than a problem.
+</Accordion>
+
+<Accordion title="Can I use CSS custom properties (variables)?">
+  CSS Custom Properties (`--my-variable: red` / `color: var(--my-variable)`) are listed as **not yet supported** (🔴) in the CSS module support matrix. This is a known limitation. In the meantime, you can pass literal values directly, or define colour tokens and other design-system primitives as ReScript constants that you interpolate into your styles.
+
+  Tracking the progress of CSS variable support is best done by watching the [GitHub issue tracker](https://github.com/davesnx/styled-ppx/issues).
+</Accordion>
+
+<Accordion title="Does it work with Melange?">
+  Yes. styled-ppx supports [Melange](https://melange.re) in addition to ReScript and native OCaml compilation. The PPX itself is language-level, so it works regardless of the backend you compile to. The emotion runtime dependency needs to be available in your JavaScript bundle, which it will be if you install it via npm as documented in the getting-started guide.
+</Accordion>
+
+</AccordionGroup>

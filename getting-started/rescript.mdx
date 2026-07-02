@@ -1,0 +1,119 @@
+---
+title: "Get Started with styled-ppx in ReScript"
+sidebarTitle: "ReScript"
+description: "Install and configure styled-ppx in a ReScript project. Add the PPX binary and runtime to bsconfig.json and write your first styled component."
+---
+
+styled-ppx brings type-safe styled components to ReScript by running as a PPX — a compile-time macro that transforms `%styled.div`, `%cx`, and `%css` extensions into valid, optimized CSS class names. This guide covers everything you need to go from a fresh ReScript project to rendering your first styled component, including package installation, `bsconfig.json` configuration, and a complete working example.
+
+<Note>
+  **Supported versions:** ReScript v9 and v10. ReScript v11 support is currently in development — [track progress here](https://github.com/davesnx/styled-ppx/pull/482). For organizations requiring support for specific ReScript versions, sponsored development options are available.
+</Note>
+
+<Steps>
+  <Step title="Install the package">
+    Install `@davesnx/styled-ppx` from npm using your preferred package manager.
+
+    <CodeGroup>
+      ```bash npm
+      npm install @davesnx/styled-ppx
+      ```
+
+      ```bash yarn
+      yarn add @davesnx/styled-ppx
+      ```
+
+      ```bash pnpm
+      pnpm add @davesnx/styled-ppx
+      ```
+    </CodeGroup>
+
+    This single package ships two entry points:
+
+    | Entry point | Purpose |
+    |---|---|
+    | `@davesnx/styled-ppx/ppx` | The PPX binary — transforms `%styled.div("")`, `%cx("")`, and `%css("")` at compile time |
+    | `@davesnx/styled-ppx/rescript` | The runtime library — exposes the `CSS` module used in your code |
+  </Step>
+
+  <Step title="Update bsconfig.json">
+    Register the PPX binary under `ppx-flags` and add the runtime library to `bs-dependencies`. Apply the following diff to your `bsconfig.json`:
+
+    ```diff
+    {
+      "bs-dependencies": [
+        "@rescript/react",
+    +   "@davesnx/styled-ppx/rescript"
+      ],
+    + "ppx-flags": ["@davesnx/styled-ppx/ppx"]
+    }
+    ```
+
+    <Note>
+      `@rescript/react` is optional — it is only required if you use styled components (`%styled.div`). If you only use `%cx` or `%css` for class name generation without React components, you can omit it.
+    </Note>
+  </Step>
+
+  <Step title="Write your first styled component">
+    You are now ready to use styled-ppx in any `.res` file. The example below shows a styled anchor component with a dynamic `color` prop and a layout class name generated with `%cx`.
+
+    ```rescript
+    module Link = %styled.a((~color=CSS.hex("4299E1")) => `
+      font-size: 1.875rem;
+      line-height: 1.5;
+      text-decoration: none;
+      margin: 0px;
+      padding: 10px 0px;
+      color: $(color);
+    `)
+
+    /* This is a unique className pointing to those styles */
+    let layout = %cx(`
+      display: flex;
+      width: 100%;
+      height: 100%;
+      justify-content: center;
+      align-items: center
+    `)
+
+    /* Later in a component */
+    <div className=layout>
+      <Link
+        color={CSS.hex("333333")}
+        href="https://sancho.dev"
+        rel="noopener noreferrer">
+        {React.string("sancho.dev")}
+      </Link>
+    </div>
+    ```
+
+    At compile time, the PPX transforms every `%styled.*` and `%cx` call into a hashed class name (e.g., `.css-1xuw4bg`) and the corresponding CSS rule. No runtime CSS-in-JS overhead — everything is resolved before your bundle ships.
+  </Step>
+</Steps>
+
+## Available extensions
+
+| Extension | Description |
+|---|---|
+| `%styled.div`, `%styled.a`, etc. | Creates a typed React component wrapping the given HTML element with the supplied styles |
+| `%cx` | Generates a single unique `className` string from a block of CSS |
+| `%css` | Generates a list of `Css.rule` values for lower-level composition |
+
+## Try it in a sandbox
+
+Fork the [try-styled-ppx](https://github.com/davesnx/try-styled-ppx) repository for a minimal pre-configured ReScript project you can run immediately without any manual setup.
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Components" icon="sliders" href="/reference/dynamic-components">
+    Pass runtime values as labeled arguments to styled components
+  </Card>
+  <Card title="cx — Class Name Utility" icon="tag" href="/reference/classname">
+    Combine and compose class names with the %cx extension
+  </Card>
+  <Card title="Interpolation" icon="code" href="/reference/interpolation">
+    Embed ReScript expressions inside CSS strings
+  </Card>
+  <Card title="Editor Support" icon="pen-to-square" href="/editor-support">
+    Enable CSS syntax highlighting in VS Code and Vim
+  </Card>
+</CardGroup>

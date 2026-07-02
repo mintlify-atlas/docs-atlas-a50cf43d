@@ -1,0 +1,71 @@
+---
+title: "About styled-ppx: Motivation, Design, and Credits"
+sidebarTitle: "About"
+description: "The story behind styled-ppx — why it was built, how PPX technology makes CSS-in-OCaml possible, and the people who made it happen."
+---
+
+styled-ppx is authored and maintained by [David Sancho](https://sancho.dev). This page is a personal note about why the project exists, how it works under the hood, and the people it would not have been possible without.
+
+## Motivation
+
+### There was a need
+
+Writing React with a CSS-in-JS library is one of the most productive ways to build scalable design systems, UI libraries, and applications. When I first discovered Reason back in 2018, there was no good way to bind to styled-components or emotion — a limitation that [many people were asking about](https://reasonml.chat/t/idiomatic-way-to-bind-to-styled-components/886) across forums and Discord servers.
+
+At the time, [bs-css](https://github.com/giraud/bs-css) and [bs-emotion](https://github.com/ahrefs/bs-emotion) offered a typed approach to CSS in Reason. Both projects were impressive efforts, but the design had some drawbacks I found hard to live with in practice:
+
+- **A new DSL on top of CSS** — Every CSS property became a function call. Simple declarations were fine, but complex ones were painful. `width: calc(100% - 20px)` became `CSS.width(calc(min, percent(100.), px(20)))`. Real codebases inevitably ended up sprinkling `CSS.unsafe` everywhere.
+- **A large runtime** — bs-css starts at around 64 KB and grows with usage. For a library whose only job is producing type-safe CSS strings, that felt like a bad trade.
+- **No escape from the runtime** — The DSL had to be translated back into CSS at runtime. A compile-time solution could do the same type-checking and produce zero runtime overhead.
+
+### It's possible — and a genuinely good solution
+
+Embedding CSS directly into Reason or OCaml source looks strange at first. The main reason CSS-in-JS solutions use native CSS syntax is JavaScript's [template literals](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals), which are not available in Reason or OCaml.
+
+Then I learned about PPX — *a mechanism to embed other languages inside Reason* — and everything clicked. A PPX could mimic template literals, parse the embedded CSS, and type-check it entirely at compile time. The idea of embedding one language inside another is not new; the most common example of it is CSS inside HTML. Using real CSS syntax (rather than a bespoke DSL) also means all the surrounding tooling still works: editor integrations, browser DevTools, GitHub Copilot, and design handoff tools that speak CSS natively.
+
+### It can be more powerful than the JavaScript equivalents
+
+Type-safety in CSS is a nice-to-have rather than a strict requirement, but it is genuinely useful. styled-ppx ships an entire CSS parser and type-checker. This means it can provide SASS-like features (future CSS syntax, nesting) while keeping emotion's runtime for injecting styles at the right time. There is also a clear path toward zero-runtime styles — extracting the CSS at build time rather than injecting it dynamically — which would be difficult or impossible with a pure JavaScript CSS-in-JS library.
+
+<Tip>
+  To see a fuller exploration of how styled-ppx works and what its benefits are, watch the [talk at the ReasonSTHLM Meetup](https://www.youtube.com/watch?v=ekHCBZiCviM).
+</Tip>
+
+## How It Works
+
+styled-ppx is a **PPX rewriter**. When you write:
+
+```rescript
+let styles = [%cx "display: flex; color: tomato"]
+```
+
+The PPX intercepts this at compile time, before the type-checker runs. It:
+
+1. **Parses** the CSS string against a model of the CSS specification.
+2. **Type-checks** every property and value pair.
+3. **Generates** typed OCaml/ReScript function calls that are substituted in place of the original expression.
+
+By the time the compiler finishes, the raw CSS string no longer exists in the output. What remains are direct calls into the [emotion](https://emotion.sh) runtime, which handles class name hashing and stylesheet injection at runtime. This means the type-safety is free — no runtime validation, no schema traversal, no overhead beyond what emotion itself needs.
+
+```rescript
+// What you write:
+let card = [%cx "padding: 1rem; border-radius: 8px"]
+
+// What the PPX generates (conceptually):
+let card = Emotion.css([("padding", "1rem"), ("border-radius", "8px")])
+```
+
+The class name returned by emotion is a short hash of the serialised CSS content, so identical styles across different components are automatically deduplicated.
+
+## Credits
+
+styled-ppx would not exist without the following people. I am genuinely grateful to each of them.
+
+- [**Javier Chávarri**](https://github.com/jchavarri) — for introducing me to Reason and patiently teaching me his knowledge of OCaml, AST manipulation, and PPX rewriters. He helped bootstrap the project from the very beginning.
+- [**Alessandro Strada**](https://github.com/astrada) — this project started as an extension of his [bs-css-ppx](https://github.com/astrada/ppx_bs_css), which provided the original inspiration.
+- [**Eduardo Rafael**](https://github.com/EduardoRFS) — for teaching me how to write a compiler and a type-checker, and for his initial implementation of the CSS value definition grammar and the parser combinator that underpins the CSS parser.
+- [**Rizo**](https://github.com/rizo) — for help with API design, long discussions about styling philosophy, and pushing the thinking on what CSS-in-OCaml could look like.
+- [**Max Lantas**](https://github.com/mnxn) — for building the VSCode extension that makes working with styled-ppx enjoyable day-to-day.
+- [**Egor Chemohonenko**](https://github.com/ixzzd) — for building the Vim plugin and bringing styled-ppx support to the terminal crowd.
+- **The JavaScript CSS-in-JS community** — this project builds on a long line of earlier work by clever people around the world. The teams behind [styled-components](https://github.com/styled-components/styled-components), [emotion](https://github.com/emotion-js/emotion), [compiled](https://github.com/atlassian-labs/compiled), [linaria](https://github.com/callstack/linaria), and many others laid the groundwork that made styled-ppx conceivable.

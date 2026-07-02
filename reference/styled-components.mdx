@@ -1,0 +1,234 @@
+---
+title: "Styled Components: Creating React Components from CSS"
+sidebarTitle: "Styled Components"
+description: "Use %styled.tag / [%styled.tag] to create type-safe React components from CSS declarations, with full HTML prop support and className extension."
+---
+
+Styled components are the primary way to build UI in styled-ppx. The `%styled.tag` extension (ReScript) or `[%styled.tag]` extension (Reason/OCaml) turns a CSS declaration block into a fully typed React component module. Every HTML element has a corresponding extension—`%styled.div`, `%styled.button`, `%styled.input`, and so on—and the generated component automatically exposes all standard React props for that element.
+
+## Basic Usage
+
+Define a styled component by wrapping a CSS declaration block with the extension for the HTML tag you want. The result is a module you can use as a React component immediately.
+
+<CodeGroup>
+```rescript ReScript
+module StyledComponent = %styled.div(`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+`)
+
+<StyledComponent>
+  {React.string("Hello from the style")}
+</StyledComponent>
+```
+
+```reason Reason
+module StyledComponent = [%styled.div {|
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+|}];
+
+<StyledComponent> {React.string("Hello from the style")} </StyledComponent>;
+```
+</CodeGroup>
+
+The CSS is parsed and type-checked at compile time. Typos in property names or invalid values become compile errors, not silent visual bugs.
+
+## React Props (makeProps)
+
+Styled components expose all the React component props for their underlying HTML element. A `%styled.input` component, for example, automatically accepts `placeholder`, `maxLength`, `onChange`, `onBlur`, `disabled`, and every other prop that `<input>` supports—with the same types.
+
+<CodeGroup>
+```rescript ReScript
+module Input = %styled.input(`
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 8px;
+
+  &:focus {
+    border-color: #aaaaaa;
+  }
+`)
+
+<Input
+  placeholder="Enter your name..."
+  maxLength=255
+  onChange={_ => ()}
+  onBlur={_ => ()}
+/>
+```
+
+```reason Reason
+module Input = [%styled.input {|
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  padding: 8px;
+
+  &:focus {
+    border-color: #aaaaaa;
+  }
+|}];
+
+<Input
+  placeholder="Enter your name..."
+  maxLength=255
+  onChange={_ => ()}
+  onBlur={_ => ()}
+/>;
+```
+</CodeGroup>
+
+The props are derived from the underlying element type via `makeProps`, so the types come directly from `rescript-react` or `reason-react`—there is no custom props layer to learn.
+
+## Extending Styles with `className`
+
+Every styled component also accepts a `className` prop. When provided, it is appended to the emotion-generated class name on the rendered element. This is useful when you need to combine styled-ppx styles with a class from an external CSS library or a third-party component system.
+
+<CodeGroup>
+```rescript ReScript
+<Input
+  placeholder="Enter your name..."
+  maxLength=255
+  onChange={_ => ()}
+  onBlur={_ => ()}
+  className="extra-classname"
+/>
+```
+
+```reason Reason
+<Input
+  placeholder="Enter your name..."
+  maxLength=255
+  onChange={_ => ()}
+  onBlur={_ => ()}
+  className="extra-classname"
+/>;
+```
+</CodeGroup>
+
+The rendered HTML places the generated emotion class first, followed by any passed `className`:
+
+```html
+<input class="css-fl09o-Input extra-classname" maxlength="255" placeholder="Enter your name...">
+```
+
+<Note>
+  The `className` prop is an escape hatch for interoperating with external styles. For composing styles within styled-ppx itself, prefer interpolation or the Array API instead.
+</Note>
+
+## The `innerRef` Prop
+
+When you need a ref to the underlying DOM node—for measuring, focusing, or integrating with third-party libraries—use the `innerRef` prop. It threads a React ref directly through to the rendered element without exposing the React internal `ref` attribute.
+
+<CodeGroup>
+```rescript ReScript
+let inputRef = React.useRef(Js.Nullable.null)
+
+module Input = %styled.input(`
+  border: 1px solid #cccccc;
+  padding: 8px;
+`)
+
+<Input innerRef=inputRef placeholder="Focus me" />
+```
+
+```reason Reason
+let inputRef = React.useRef(Js.Nullable.null);
+
+module Input = [%styled.input {|
+  border: 1px solid #cccccc;
+  padding: 8px;
+|}];
+
+<Input innerRef=inputRef placeholder="Focus me" />;
+```
+</CodeGroup>
+
+<Tip>
+  Use `innerRef` any time you would normally write `ref=` on a DOM element. The standard `ref` attribute is reserved by React and is not forwarded to the DOM—`innerRef` is styled-ppx's forwarding mechanism.
+</Tip>
+
+## Supported Tags
+
+All standard HTML elements are available as `%styled.<tag>` extensions. Some common examples:
+
+| Tag | ReScript | Reason |
+|-----|----------|--------|
+| `div` | `%styled.div(...)` | `[%styled.div ...]` |
+| `span` | `%styled.span(...)` | `[%styled.span ...]` |
+| `button` | `%styled.button(...)` | `[%styled.button ...]` |
+| `input` | `%styled.input(...)` | `[%styled.input ...]` |
+| `a` | `%styled.a(...)` | `[%styled.a ...]` |
+| `p` | `%styled.p(...)` | `[%styled.p ...]` |
+| `section` | `%styled.section(...)` | `[%styled.section ...]` |
+
+Any valid HTML element name works as the tag. The full list mirrors the elements available in `ReactDOM`.
+
+## CSS Features Inside Styled Components
+
+The CSS inside a styled component uses **declaration block** mode. You write the body of the rule—not an outer selector—and styled-ppx generates the class selector for you.
+
+<CodeGroup>
+```rescript ReScript
+module Card = %styled.div(`
+  padding: 16px;
+  border-radius: 8px;
+  background: #ffffff;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  & > h2 {
+    margin: 0 0 8px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+`)
+```
+
+```reason Reason
+module Card = [%styled.div {|
+  padding: 16px;
+  border-radius: 8px;
+  background: #ffffff;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  & > h2 {
+    margin: 0 0 8px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+|}];
+```
+</CodeGroup>
+
+See the [CSS Syntax](/reference/syntax) reference for the full grammar, selector nesting rules, and at-rule support.
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Components" icon="sliders" href="/reference/dynamic-components">
+    Drive styles from props using the function form of styled components
+  </Card>
+  <Card title="CSS Syntax" icon="code" href="/reference/syntax">
+    Full reference for declaration blocks, selectors, and at-rules
+  </Card>
+  <Card title="Interpolation" icon="brackets-curly" href="/reference/interpolation">
+    Use runtime variables inside your CSS with type safety
+  </Card>
+  <Card title="className (%cx)" icon="tag" href="/reference/classname">
+    Generate a class name string without creating a component
+  </Card>
+</CardGroup>

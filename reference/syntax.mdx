@@ -1,0 +1,532 @@
+---
+title: "CSS Syntax Reference: Parse Modes, Selectors, and At-Rules"
+sidebarTitle: "CSS Syntax"
+description: "Covers styled-ppx's three CSS parse modes, selector nesting with &, at-rules, interpolation placement rules, and a comparison table for all extension points."
+---
+
+styled-ppx parses CSS strings in three distinct modes depending on which extension you use. Knowing which mode is active tells you exactly what syntax is valid, what the output looks like, and where you can nest selectors, at-rules, and interpolations. This page is the authoritative reference for all three modes, including every supported selector form, at-rule type, and interpolation placement.
+
+## Parse Modes at a Glance
+
+| Extension | Mode | What it accepts |
+|-----------|------|-----------------|
+| `%cx`, `%css`, `%styled.tag` | Declaration block | Declarations, nested selectors, nested at-rules |
+| `%styled.global` | Stylesheet | Top-level rules and at-rules exactly as in a `.css` file |
+| `%css` (single) | Single declaration | Exactly one `property: value` pair |
+
+<Note>
+  `%css` appears in two rows because it has two valid forms: a multi-declaration block form (same grammar as `%cx`) and a single-declaration form that returns a `Css.rule`. Which form is active depends on whether you write a single declaration without an outer block. In practice, use `%css("display: block")` for a single rule and `%cx(...)` for everything else.
+</Note>
+
+## Declaration Block Mode
+
+`%cx`, `%css`, and `%styled.tag` all use declaration block mode. You write the **body** of a CSS rule—declarations, nested selectors, and nested at-rules—without an outer selector. styled-ppx generates the scoped class selector for you.
+
+<CodeGroup>
+```rescript ReScript
+let card = %cx(`
+  display: grid;
+  gap: 16px;
+
+  &:hover {
+    gap: 20px;
+  }
+
+  svg path {
+    fill: currentColor;
+  }
+
+  @media (min-width: 768px) {
+    gap: 24px;
+  }
+`)
+```
+
+```reason Reason
+let card = [%cx {|
+  display: grid;
+  gap: 16px;
+
+  &:hover {
+    gap: 20px;
+  }
+
+  svg path {
+    fill: currentColor;
+  }
+
+  @media (min-width: 768px) {
+    gap: 24px;
+  }
+|}];
+```
+</CodeGroup>
+
+In declaration block mode you can mix:
+
+- Plain declarations (`property: value;`)
+- Nested selectors using `&` or bare tag/class/id selectors
+- Nested at-rules (`@media`, `@supports`, `@container`)
+
+Declarations may appear before or after nested blocks. Keeping declarations first is the clearest convention.
+
+## Stylesheet Mode
+
+`%styled.global` parses a full stylesheet. Top-level selectors are written exactly as you would in a `.css` file and are **not** scoped to a generated class.
+
+<CodeGroup>
+```rescript ReScript
+%styled.global(`
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none;
+    }
+  }
+`)
+```
+
+```reason Reason
+[%styled.global {|
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation: none;
+    }
+  }
+|}];
+```
+</CodeGroup>
+
+Use stylesheet mode for global resets, document-level selectors, and top-level at-rules such as `@font-face` or `@keyframes` that must live at the root of the stylesheet.
+
+## Single Declaration Mode
+
+`%css` in single-declaration form accepts exactly one `property: value` pair and returns a `Css.rule`. This is the building block for the [Array API](/reference/array).
+
+<CodeGroup>
+```rescript ReScript
+let rule: Css.rule = %css("display: block")
+let rule2: Css.rule = %css("display: block;") // trailing semicolon optional
+```
+
+```reason Reason
+let rule: Css.rule = [%css "display: block"];
+let rule2: Css.rule = [%css "display: block;"]; (* trailing semicolon optional *)
+```
+</CodeGroup>
+
+The following are **not** valid in single-declaration mode:
+
+```css
+/* ❌ Multiple declarations */
+color: red; background: blue;
+
+/* ❌ Nested selector */
+&:hover { color: red; }
+
+/* ❌ At-rule */
+@media (...) { ... }
+```
+
+For selectors, media queries, or more than one declaration, use `%cx` or a `%styled.tag` instead.
+
+## Selectors and Nesting
+
+Declaration block mode supports nested selectors. The parser accepts both `&`-prefixed nesting and bare descendant selectors.
+
+### `&` — the Current Generated Selector
+
+`&` is replaced with the generated class name when the styles are serialised. Use it to build compound selectors, pseudo-classes, pseudo-elements, and sibling/child combinations:
+
+```css
+&:hover          /* .generated:hover */
+&::before        /* .generated::before */
+&.active         /* .generated.active */
+&#hero           /* .generated#hero */
+& > span         /* .generated > span */
+& + &            /* .generated + .generated */
+div &            /* div .generated */
+```
+
+<CodeGroup>
+```rescript ReScript
+let styles = %cx(`
+  background: #fff;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &::before {
+    content: "";
+    display: block;
+  }
+
+  & + & {
+    margin-top: 8px;
+  }
+
+  div & {
+    margin-left: auto;
+  }
+`)
+```
+
+```reason Reason
+let styles = [%cx {|
+  background: #fff;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &::before {
+    content: "";
+    display: block;
+  }
+
+  & + & {
+    margin-top: 8px;
+  }
+
+  div & {
+    margin-left: auto;
+  }
+|}];
+```
+</CodeGroup>
+
+### Bare Nested Selectors — Descendant Relationships
+
+You do not need `&` for every nested selector. Bare selectors become **descendants** of the generated class:
+
+```css
+.child      /* .generated .child */
+#selected   /* .generated #selected */
+div         /* .generated div */
+svg path    /* .generated svg path */
+[data-open] /* .generated [data-open] */
+```
+
+<CodeGroup>
+```rescript ReScript
+let container = %cx(`
+  position: relative;
+
+  .child {
+    color: blue;
+  }
+
+  svg path {
+    fill: currentColor;
+  }
+
+  [data-open] {
+    opacity: 1;
+  }
+`)
+```
+
+```reason Reason
+let container = [%cx {|
+  position: relative;
+
+  .child {
+    color: blue;
+  }
+
+  svg path {
+    fill: currentColor;
+  }
+
+  [data-open] {
+    opacity: 1;
+  }
+|}];
+```
+</CodeGroup>
+
+### Supported Selector Features
+
+| Category | Examples |
+|----------|---------|
+| Type selectors | `div`, `button`, `svg path` |
+| Class / ID / Universal | `.child`, `#main`, `*` |
+| Attribute selectors | `[disabled]`, `[type="text"]`, `[href^="https"]` |
+| Pseudo-classes | `:hover`, `:focus`, `:not(...)`, `:is(...)`, `:where(...)`, `:has(...)` |
+| Pseudo-elements | `::before`, `::after`, `::first-line`, `::first-letter` |
+| Combinators | Descendant, `>`, `+`, `~` |
+| Selector lists | Comma-separated groups |
+
+## At-Rules
+
+Declaration block mode supports **nested** at-rules. These are the three most common:
+
+| At-rule | Usage |
+|---------|-------|
+| `@media` | Responsive breakpoints |
+| `@supports` | Feature queries |
+| `@container` | Container queries |
+
+<CodeGroup>
+```rescript ReScript
+let layout = %cx(`
+  display: grid;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @supports (display: grid) {
+    gap: 16px;
+  }
+
+  @container card (width >= 400px) {
+    padding: 24px;
+  }
+`)
+```
+
+```reason Reason
+let layout = [%cx {|
+  display: grid;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @supports (display: grid) {
+    gap: 16px;
+  }
+
+  @container card (width >= 400px) {
+    padding: 24px;
+  }
+|}];
+```
+</CodeGroup>
+
+<Note>
+  Keyframe animations use a dedicated `%keyframe` extension and should not be written inline inside a declaration block. See the [Keyframe](/reference/keyframe) reference.
+</Note>
+
+## Interpolation in CSS Strings
+
+The `$(ident)` interpolation syntax is supported in three positions within a declaration block:
+
+| Position | Type enforcement | Example |
+|----------|-----------------|---------|
+| Property value | Yes — inferred from property | `color: $(textColor)` |
+| Selector | String-like (no property type) | `&.$(activeClass)` |
+| At-rule prelude | String-like (no property type) | `@media $(Media.tablet)` |
+
+### Value Interpolation
+
+<CodeGroup>
+```rescript ReScript
+let textColor = CSS.hex("333333")
+let borderColor = CSS.hex("cccccc")
+let topMenuHeight = CSS.px(60)
+
+let styles = %cx(`
+  color: $(textColor);
+  border-bottom: 1px solid $(borderColor);
+  height: calc(100vh - $(topMenuHeight));
+`)
+```
+
+```reason Reason
+let textColor = CSS.hex("333333");
+let borderColor = CSS.hex("cccccc");
+let topMenuHeight = CSS.px(60);
+
+let styles = [%cx {|
+  color: $(textColor);
+  border-bottom: 1px solid $(borderColor);
+  height: calc(100vh - $(topMenuHeight));
+|}];
+```
+</CodeGroup>
+
+### Selector Interpolation
+
+<CodeGroup>
+```rescript ReScript
+let activeClass = "is-active"
+let headingSelector = "h2"
+
+let styles = %cx(`
+  &.$(activeClass) {
+    opacity: 1;
+  }
+
+  :is(h1, $(headingSelector), h3) {
+    margin-top: 0;
+  }
+`)
+```
+
+```reason Reason
+let activeClass = "is-active";
+let headingSelector = "h2";
+
+let styles = [%cx {|
+  &.$(activeClass) {
+    opacity: 1;
+  }
+
+  :is(h1, $(headingSelector), h3) {
+    margin-top: 0;
+  }
+|}];
+```
+</CodeGroup>
+
+### At-Rule Prelude Interpolation
+
+<CodeGroup>
+```rescript ReScript
+module Media = {
+  let mobileDown = "(max-width: 767px)"
+  let desktopDown = "(max-width: 1199px)"
+}
+
+let styles = %cx(`
+  display: flex;
+
+  @media $(Media.mobileDown) {
+    display: block;
+  }
+
+  @media screen and $(Media.desktopDown) {
+    display: none;
+  }
+`)
+```
+
+```reason Reason
+module Media = {
+  let mobileDown = "(max-width: 767px)";
+  let desktopDown = "(max-width: 1199px)";
+};
+
+let styles = [%cx {|
+  display: flex;
+
+  @media $(Media.mobileDown) {
+    display: block;
+  }
+
+  @media screen and $(Media.desktopDown) {
+    display: none;
+  }
+|}];
+```
+</CodeGroup>
+
+## Edge Cases and Caveats
+
+- The trailing semicolon after the **last** declaration is optional.
+- Declaration blocks recover many missing semicolons before nested selectors or `@media` blocks, but explicit semicolons are still recommended for clarity.
+- `%css` (single-declaration mode) does not accept braces, selectors, or multiple declarations.
+- Declaration block APIs (`%cx`, `%css`, `%styled.tag`) do **not** need an outer wrapper selector such as `.foo { ... }`. Stylesheet mode (`%styled.global`) does.
+- Property names cannot be interpolated. Use a switch expression with per-case `%css` calls instead.
+- If a property is unsupported, the best escape hatch is `CSS.unsafe(...)` via the [Array API](/reference/array).
+
+## Examples by Mode
+
+### `%cx` / `%css` / `%styled.tag` — Declaration Block
+
+<CodeGroup>
+```rescript ReScript
+let block = %cx(`
+  padding: 16px;
+
+  &:hover {
+    padding: 20px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+`)
+```
+
+```reason Reason
+let block = [%cx {|
+  padding: 16px;
+
+  &:hover {
+    padding: 20px;
+  }
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+|}];
+```
+</CodeGroup>
+
+### `%styled.global` — Stylesheet
+
+<CodeGroup>
+```rescript ReScript
+%styled.global(`
+  html, body {
+    margin: 0;
+  }
+
+  .nprogress-bar {
+    height: 3px;
+  }
+`)
+```
+
+```reason Reason
+[%styled.global {|
+  html, body {
+    margin: 0;
+  }
+
+  .nprogress-bar {
+    height: 3px;
+  }
+|}];
+```
+</CodeGroup>
+
+### `%css` — Single Declaration
+
+<CodeGroup>
+```rescript ReScript
+let rule: Css.rule = %css("padding: 16px")
+```
+
+```reason Reason
+let rule: Css.rule = [%css "padding: 16px"];
+```
+</CodeGroup>
+
+<CardGroup cols={2}>
+  <Card title="Interpolation" icon="brackets-curly" href="/reference/interpolation">
+    Full rules for $(ident) and type-safety
+  </Card>
+  <Card title="Selectors" icon="hash" href="/reference/selectors">
+    Detailed selector reference with nesting examples
+  </Card>
+  <Card title="Media Queries" icon="mobile" href="/reference/media-queries">
+    Responsive breakpoints and @supports queries
+  </Card>
+  <Card title="Array API" icon="list" href="/reference/array">
+    Compose Css.rule values with pattern matching
+  </Card>
+</CardGroup>

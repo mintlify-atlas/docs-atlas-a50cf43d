@@ -1,0 +1,110 @@
+---
+title: "styled-ppx: Type-Safe Styled Components for ReScript, Melange & OCaml"
+sidebarTitle: "Introduction"
+description: "styled-ppx brings type-safe styled components and CSS-in-code to ReScript, Melange, and OCaml via a PPX macro that validates your CSS at compile time."
+---
+
+styled-ppx is a [PPX](https://tarides.com/blog/2019-05-09-an-introduction-to-ocaml-ppx-ecosystem) (preprocessor extension) and runtime library that brings styled components to ReScript, Melange, and OCaml. Write CSS directly in your source code and get type errors at compile time—not runtime surprises in the browser.
+
+<CardGroup cols={2}>
+  <Card title="ReScript Quickstart" icon="bolt" href="/getting-started/rescript">
+    Install via npm and add to your bsconfig in minutes
+  </Card>
+  <Card title="Melange Quickstart" icon="bolt" href="/getting-started/melange">
+    Install via opam and configure dune for Melange projects
+  </Card>
+  <Card title="OCaml Native" icon="server" href="/getting-started/native">
+    Server-side rendering and native OCaml support
+  </Card>
+  <Card title="API Reference" icon="code" href="/reference/styled-components">
+    Explore all extensions: %styled, %cx, %css, %keyframe
+  </Card>
+</CardGroup>
+
+## What is styled-ppx?
+
+A PPX is OCaml's macro system—a small program that runs before compilation and transforms your source code. styled-ppx uses this to expand CSS extension nodes like `%styled.div`, `%cx`, `%css`, and `%keyframe` into fully typed, validated code backed by [emotion](https://emotion.sh).
+
+```rescript
+module Center = %styled.div(`
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`)
+
+<Center> {React.string("Hello from the future!")} </Center>
+```
+
+```reason
+module Center = [%styled.div {|
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+|}];
+
+<Center> {React.string("Hello from the future!")} </Center>;
+```
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Type-Safe CSS" icon="shield-check">
+    Built-in CSS parser and type-checker catches invalid properties and values at compile time—before your code ever runs.
+  </Card>
+  <Card title="Zero Abstraction" icon="layer-group">
+    Write real CSS. No DSL to learn, no `calc(min, percent(100.), px(20))` workarounds—just standard CSS syntax.
+  </Card>
+  <Card title="Dynamic Components" icon="sliders">
+    Drive styles from props. Type holes infer the correct CSS value type from the property's position automatically.
+  </Card>
+  <Card title="Three Platforms" icon="globe">
+    Supports ReScript (npm), Melange (opam), and OCaml native with server-side rendering via `styled-ppx.native`.
+  </Card>
+  <Card title="Composable Rules" icon="puzzle-piece">
+    The Array API lets you compose `Css.rule` values with pattern matching, function calls, and conditionals.
+  </Card>
+  <Card title="Editor Support" icon="pencil">
+    VSCode and Vim extensions provide CSS syntax highlighting inside styled-ppx string extensions.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+styled-ppx operates entirely at compile time. The PPX reads the CSS string you write, parses it against CSS Syntax Module Level 3, type-checks every property and value, then emits OCaml code that calls the emotion runtime to hash and inject the styles.
+
+<Steps>
+  <Step title="You write CSS in an extension node">
+    ```rescript
+    let layout = %cx(`display: flex; align-items: center;`)
+    ```
+  </Step>
+  <Step title="The PPX parses and type-checks your CSS">
+    If a property or value is invalid, you get a compile error pointing to the exact location.
+  </Step>
+  <Step title="The PPX emits typed OCaml code">
+    The extension expands to a call like `Css.cx([CSS.display(#flex), CSS.alignItems(#center)])` with proper types.
+  </Step>
+  <Step title="The runtime injects styles at load time">
+    Emotion hashes the rules, generates a unique class name, and injects a `<style>` tag into the document head.
+  </Step>
+</Steps>
+
+## Extensions at a Glance
+
+| Extension | ReScript | Reason/OCaml | Returns |
+|-----------|----------|--------------|---------|
+| Styled component | `%styled.div(...)` | `[%styled.div ...]` | React component module |
+| Class name | `%cx(...)` | `[%cx ...]` | `string` (className) |
+| Single rule | `%css(...)` | `[%css ...]` | `Css.rule` |
+| Keyframe | `%keyframe(...)` | `[%keyframe ...]` | Opaque keyframe ref |
+| Global styles | `%styled.global(...)` | `[%styled.global ...]` | `unit` |
+
+## Supported Platforms
+
+- **[ReScript](/getting-started/rescript)** — ReScript v9 and v10 via npm (`@davesnx/styled-ppx`)
+- **[Melange](/getting-started/melange)** — Melange 3+ via opam (`styled-ppx`)
+- **[OCaml Native](/getting-started/native)** — Server-side rendering via opam (`styled-ppx.native`)
