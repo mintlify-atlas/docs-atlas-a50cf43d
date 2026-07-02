@@ -1,7 +1,7 @@
 ---
 title: "CSS Syntax Reference: Parse Modes, Selectors, and At-Rules"
 sidebarTitle: "CSS Syntax"
-description: "Covers styled-ppx's three CSS parse modes, selector nesting with &, at-rules, interpolation placement rules, and a comparison table for all extension points."
+description: "Reference for styled-ppx CSS parse modes: declaration block, stylesheet, and single declaration, plus selector nesting, at-rules, and interpolation rules."
 ---
 
 styled-ppx parses CSS strings in three distinct modes depending on which extension you use. Knowing which mode is active tells you exactly what syntax is valid, what the output looks like, and where you can nest selectors, at-rules, and interpolations. This page is the authoritative reference for all three modes, including every supported selector form, at-rule type, and interpolation placement.
@@ -13,10 +13,6 @@ styled-ppx parses CSS strings in three distinct modes depending on which extensi
 | `%cx`, `%css`, `%styled.tag` | Declaration block | Declarations, nested selectors, nested at-rules |
 | `%styled.global` | Stylesheet | Top-level rules and at-rules exactly as in a `.css` file |
 | `%css` (single) | Single declaration | Exactly one `property: value` pair |
-
-<Note>
-  `%css` appears in two rows because it has two valid forms: a multi-declaration block form (same grammar as `%cx`) and a single-declaration form that returns a `Css.rule`. Which form is active depends on whether you write a single declaration without an outer block. In practice, use `%css("display: block")` for a single rule and `%cx(...)` for everything else.
-</Note>
 
 ## Declaration Block Mode
 

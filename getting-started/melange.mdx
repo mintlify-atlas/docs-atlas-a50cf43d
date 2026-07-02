@@ -1,5 +1,5 @@
 ---
-title: "Get Started with styled-ppx in Melange"
+title: "Install and Configure styled-ppx in a Melange Project"
 sidebarTitle: "Melange"
 description: "Install styled-ppx via opam and configure dune for a Melange project. Wire up the PPX and runtime library to write type-safe styled components."
 ---
@@ -130,7 +130,7 @@ styled-ppx integrates with Melange projects through the standard opam and dune t
       ```
     </CodeGroup>
 
-    The PPX hashes every CSS block at compile time and generates a unique, stable class name. The resulting JavaScript contains no runtime CSS parsing — only the pre-computed class name strings and the linked `@emotion/css` runtime for style injection.
+    The PPX hashes every CSS block at compile time and generates a unique, stable class name string. The corresponding CSS rules are extracted to a static stylesheet at build time — no runtime CSS parsing is needed.
   </Step>
 </Steps>
 

@@ -1,5 +1,5 @@
 ---
-title: "Media Queries in styled-ppx: Responsive Styles"
+title: "Media Queries in styled-ppx: Responsive CSS Styles"
 sidebarTitle: "Media Queries"
 description: "Add @media rules and other CSS at-rules inside %cx and %styled blocks, with support for string interpolation and reusable breakpoint modules."
 ---
@@ -87,7 +87,3 @@ let container = [%cx {|
 ## Other at-rules
 
 The same syntax works for other CSS at-rules that can appear inside a rule block, such as `@supports` and `@layer`. Any at-rule that is syntactically valid in CSS and appears inside the extension string will be processed and emitted correctly.
-
-<Warning>
-  `@font-face` and `@import` are best placed in a plain `.css` file or directly in your HTML rather than inside `%styled.global`. Keeping them inside emotion's runtime delays font fetching and can cause a [Flash of Unstyled Text (FOUT)](https://css-tricks.com/fout-foit-foft/). See the [Globals reference](/reference/globals) for details.
-</Warning>

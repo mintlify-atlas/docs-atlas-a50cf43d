@@ -12,17 +12,13 @@ The `CSS` module ships under different package names depending on your target pl
 
 <Tabs>
   <Tab title="ReScript">
-    Add one of the following to your `bsconfig.json` under `"bs-dependencies"`:
+    Add the following to your `bsconfig.json` under `"bs-dependencies"`:
 
     ```json
     "@davesnx/styled-ppx/rescript"
     ```
 
-    Two sub-packages are available:
-    - `@davesnx/styled-ppx/css` — the CSS runtime without emotion
-    - `@davesnx/styled-ppx/emotion` — the CSS runtime bundled with the emotion bindings
-
-    The `@davesnx/styled-ppx/rescript` convenience dependency includes the correct sub-package automatically.
+    `@davesnx/styled-ppx/rescript` is the library that exposes the `CSS` module with all runtime values and property functions.
   </Tab>
   <Tab title="Melange">
     Add `styled-ppx.melange` under `(libraries ...)` in your dune file:
@@ -149,7 +145,7 @@ let gap = CSS.var("spacing-md")
 // -> var(--spacing-md)
 
 // With fallback
-let color = CSS.var("brand-color", ~default="blue")
+let color = CSS.var(~default="blue", "brand-color")
 // -> var(--brand-color, blue)
 ```
 
@@ -159,7 +155,7 @@ let gap = CSS.var("spacing-md");
 /* -> var(--spacing-md) */
 
 /* With fallback */
-let color = CSS.var("brand-color", ~default="blue");
+let color = CSS.var(~default="blue", "brand-color");
 /* -> var(--brand-color, blue) */
 ```
 </CodeGroup>

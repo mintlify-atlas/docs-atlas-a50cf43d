@@ -1,5 +1,5 @@
 ---
-title: "Get Started with styled-ppx for OCaml Native"
+title: "Install and Use styled-ppx for Server-Side OCaml Native"
 sidebarTitle: "Native"
 description: "Use styled-ppx server-side with OCaml and dune. Learn CSS.get_stylesheet, CSS.style_tag, and the server-reason-react hydration pattern for SSR."
 ---
@@ -115,14 +115,6 @@ styled-ppx supports fully server-side and native OCaml workloads through the `st
         } */
       ```
     </CodeGroup>
-
-    ## CSS API reference
-
-    | Function | Return type | Description |
-    |---|---|---|
-    | `CSS.get_stylesheet()` | `string` | Returns all accumulated CSS rules as a plain string |
-    | `CSS.style_tag` | React element | Renders a `<style>` tag containing all accumulated CSS, for use with `server-reason-react` |
-    | `CSS.get_string_style_hashes()` | `string` | Returns a space-separated list of all class name hashes — needed for client hydration |
   </Step>
 
   <Step title="Render styles with server-reason-react">
@@ -207,6 +199,14 @@ styled-ppx supports fully server-side and native OCaml workloads through the `st
     ```
   </Step>
 </Steps>
+
+## CSS API reference
+
+| Function | Return type | Description |
+|---|---|---|
+| `CSS.get_stylesheet()` | `string` | Returns all accumulated CSS rules as a plain string |
+| `CSS.style_tag` | React element | Renders a `<style>` tag containing all accumulated CSS, for use with `server-reason-react` |
+| `CSS.get_string_style_hashes()` | `string` | Returns a space-separated list of all class name hashes — needed for client hydration |
 
 ## Handling dynamic CSS and missing class names
 

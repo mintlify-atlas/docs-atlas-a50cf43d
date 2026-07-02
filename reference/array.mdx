@@ -1,5 +1,5 @@
 ---
-title: "Array API in styled-ppx: Composable CSS Rules"
+title: "Array API in styled-ppx: Composable Dynamic CSS Rules"
 sidebarTitle: "Array API"
 description: "Pass an array of Css.rule values to %styled or %cx for composable, dynamically computed styles with variable refs, conditionals, and pattern matching."
 ---
@@ -8,7 +8,7 @@ The string-based API is convenient for static styles, but real applications ofte
 
 ## What is `Css.rule`?
 
-`Css.rule` is a type that represents a single [CSS declaration](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/CSS_basics#declaration). It can be a CSS property declaration, a selector block, or an at-rule such as `@media` or `@font-face`. You create `Css.rule` values using the [`%css` extension](/reference/css) or the `CSS` module, and then collect them into an array that is handed to `%styled` or `%cx`.
+`Css.rule` is a type that represents a single [CSS declaration](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/CSS_basics#declaration). It can be a CSS property declaration, a [CSS selector](https://developer.mozilla.org/en-US/docs/Learn/CSS/Building_blocks/Selectors), or an [at-rule](https://developer.mozilla.org/en-US/docs/Web/CSS/At-rule) such as `@media` or `@font-face`. You create `Css.rule` values using the [`%css` extension](/reference/css) or the [`CSS` module](/reference/runtime), and then collect them into an array that is handed to `%styled` or `%cx`.
 
 ## Basic example
 
@@ -150,4 +150,4 @@ module Button = [%styled.button (~variant) => {
 - **Composability** — share and reuse individual rules across multiple components.
 - **Expressiveness** — use the full power of the language (conditionals, `switch`, function calls) to compute styles.
 - **Migration path** — if you are moving from `bs-css` or another rule-based system, you can wrap existing `Css.rule` values directly without rewriting everything as strings.
-- **Parser bypass** — if styled-ppx does not yet support a particular property, you can pass it through the `CSS` module without waiting for a parser update.
+- **Parser bypass** — if styled-ppx does not yet support a particular property, you can pass it through the [`CSS` module](/reference/runtime) without waiting for a parser update.

@@ -1,5 +1,5 @@
 ---
-title: "styled-ppx: Type-Safe Styled Components for ReScript, Melange & OCaml"
+title: "styled-ppx: Type-Safe CSS for ReScript, Melange & OCaml"
 sidebarTitle: "Introduction"
 description: "styled-ppx brings type-safe styled components and CSS-in-code to ReScript, Melange, and OCaml via a PPX macro that validates your CSS at compile time."
 ---
@@ -23,7 +23,7 @@ styled-ppx is a [PPX](https://tarides.com/blog/2019-05-09-an-introduction-to-oca
 
 ## What is styled-ppx?
 
-A PPX is OCaml's macro system—a small program that runs before compilation and transforms your source code. styled-ppx uses this to expand CSS extension nodes like `%styled.div`, `%cx`, `%css`, and `%keyframe` into fully typed, validated code backed by [emotion](https://emotion.sh).
+A PPX is OCaml's macro system—a small program that runs before compilation and transforms your source code. styled-ppx uses this to expand CSS extension nodes like `%styled.div`, `%cx`, `%css`, and `%keyframe` into fully typed, validated code backed by its own CSS runtime.
 
 ```rescript
 module Center = %styled.div(`
@@ -74,7 +74,7 @@ module Center = [%styled.div {|
 
 ## How It Works
 
-styled-ppx operates entirely at compile time. The PPX reads the CSS string you write, parses it against CSS Syntax Module Level 3, type-checks every property and value, then emits OCaml code that calls the emotion runtime to hash and inject the styles.
+styled-ppx operates entirely at compile time. The PPX reads the CSS string you write, parses it against CSS Syntax Module Level 3, type-checks every property and value, hashes the resulting rules into unique class names, and emits OCaml code that calls the CSS runtime to attach styles at load time.
 
 <Steps>
   <Step title="You write CSS in an extension node">
@@ -86,17 +86,17 @@ styled-ppx operates entirely at compile time. The PPX reads the CSS string you w
     If a property or value is invalid, you get a compile error pointing to the exact location.
   </Step>
   <Step title="The PPX emits typed OCaml code">
-    The extension expands to a call like `Css.cx([CSS.display(#flex), CSS.alignItems(#center)])` with proper types.
+    The extension expands to a call like `CSS.make("css-<hash>-layout", [])` — the class name string and CSS text are both computed at compile time and embedded directly in the output.
   </Step>
-  <Step title="The runtime injects styles at load time">
-    Emotion hashes the rules, generates a unique class name, and injects a `<style>` tag into the document head.
+  <Step title="The runtime attaches styles at load time">
+    The pre-computed CSS rules (stored as module-level attributes) are rendered into a `<style>` element and injected into the document head when the module loads.
   </Step>
 </Steps>
 
 ## Extensions at a Glance
 
 | Extension | ReScript | Reason/OCaml | Returns |
-|-----------|----------|--------------|---------|
+|-----------|----------|--------------|---------| 
 | Styled component | `%styled.div(...)` | `[%styled.div ...]` | React component module |
 | Class name | `%cx(...)` | `[%cx ...]` | `string` (className) |
 | Single rule | `%css(...)` | `[%css ...]` | `Css.rule` |

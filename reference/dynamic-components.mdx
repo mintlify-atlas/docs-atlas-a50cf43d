@@ -1,7 +1,7 @@
 ---
 title: "Dynamic Components: Prop-Driven Styles in styled-ppx"
 sidebarTitle: "Dynamic Components"
-description: "Define styled components as functions to drive CSS values from props. Type holes infer the correct CSS value type from each property's position automatically."
+description: "Define styled components as functions to drive CSS values from props. Type holes infer the CSS value type from property position for automatic type safety."
 ---
 
 Dynamic components extend the styled component model to support styles that change based on props. Instead of passing a CSS string directly to `%styled.tag`, you pass a function that receives labelled arguments and returns a CSS string. The function arguments become React props on the generated component, with their types inferred automatically from how each argument is used inside the CSS.
@@ -52,7 +52,7 @@ This means you pass values from the `CSS` module and the compiler enforces the c
 
 ## A More Complete Example
 
-Dynamic components work naturally with pattern matching, conditional logic, and any OCaml/ReScript expression—as long as the final returned value is a string literal (not a variable or function call reference):
+Dynamic components work naturally with pattern matching, conditional logic, and any OCaml/ReScript expression—as long as the final returned value is an inline string literal or an inline array of `Css.rule` values (not a variable reference or a named function reference):
 
 <CodeGroup>
 ```rescript ReScript
@@ -144,21 +144,24 @@ If you choose a prop name that collides with one of the standard `makeProps` key
 
 You can check the list of standard `makeProps` keys in [rescript-react's `ReactDOM.res`](https://github.com/rescript-lang/rescript-react/blob/master/src/ReactDOM.res#L367) to see which names to avoid.
 
-## PPX Limitation: The Return Value Must Be a String Literal
+## PPX Limitation: The Return Value Must Be an Inline Literal
 
-Because styled-ppx operates on the AST before compilation, it must be able to read the CSS string at transform time. The last expression of the function body (the returned value) must be a string literal—not a variable reference or a function call that returns a string.
+Because styled-ppx operates on the AST before compilation, it must be able to read the CSS at transform time. The last expression of the function body (the returned value) must be an inline string literal or an inline array of `Css.rule` values—not a variable reference or a named function reference.
 
 ```rescript
-// ✅ Valid — string literal is the last expression
+// ✅ Valid — inline string literal
 module A = %styled.div((~color) => `color: $(color);`)
+
+// ✅ Valid — inline array of Css.rule
+module B = %styled.div((~color) => [%css("color: $(color)")])
 
 // ❌ Invalid — can't pass a variable reference
 let myCss = "color: red;"
-module B = %styled.div(myCss)
+module C = %styled.div(myCss)
 
 // ❌ Invalid — can't pass a named function reference
 let fn = (~color) => `color: $(color);`
-module C = %styled.div(fn)
+module D = %styled.div(fn)
 ```
 
 If you need to build CSS from complex runtime logic, use the [Array API](/reference/array) to compose `Css.rule` values directly.

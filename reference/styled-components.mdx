@@ -135,7 +135,7 @@ module Input = %styled.input(`
   padding: 8px;
 `)
 
-<Input innerRef=inputRef placeholder="Focus me" />
+<Input innerRef={ReactDOM.Ref.domRef(inputRef)} placeholder="Focus me" />
 ```
 
 ```reason Reason
@@ -146,12 +146,12 @@ module Input = [%styled.input {|
   padding: 8px;
 |}];
 
-<Input innerRef=inputRef placeholder="Focus me" />;
+<Input innerRef={ReactDOM.Ref.domRef(inputRef)} placeholder="Focus me" />;
 ```
 </CodeGroup>
 
 <Tip>
-  Use `innerRef` any time you would normally write `ref=` on a DOM element. The standard `ref` attribute is reserved by React and is not forwarded to the DOM—`innerRef` is styled-ppx's forwarding mechanism.
+  Use `innerRef` any time you need a ref to the underlying DOM element. The standard `ref` attribute is reserved by React and is not forwarded to the DOM—`innerRef` is styled-ppx's forwarding mechanism. Pass a `ReactDOM.Ref.domRef(...)` value.
 </Tip>
 
 ## Supported Tags
